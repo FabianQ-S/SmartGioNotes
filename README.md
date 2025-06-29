@@ -1,4 +1,7 @@
-![AQPdbSiM4LUPIV6t-zDdIE5fSfaydOjU0MyC0uY9CG4vCndT0jidv_letMiwLHWaOCegDoQpgJ9UowTbIzmowQcExJVdxtSWnY5pQzfNw98RYlpTOErvuPaw3AKZPuc0t2RN1e9Eeb7tPpLFYxqnhVzKcRdrEA](https://github.com/user-attachments/assets/45ceaea1-858f-40df-b4f0-b404bf5db2f7)
+<!-- Centrado y con ancho máximo de 300px -->
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/45ceaea1-858f-40df-b4f0-b404bf5db2f7" alt="SmartGioNotes" width="300px" />
+</p>
 
 # SmartGioNotes 📍🗺️
  GioNotes permite a los usuarios crear y gestionar notas vinculadas a ubicaciones geográficas. La aplicacion ,pensada para los mas viajeros te permite capturar tus ideas en cada momento de tu viaje y llevarte ese recuerdo contigo permanente!!!!
