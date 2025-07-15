@@ -31,10 +31,8 @@ public class NoteFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View vista = inflater.inflate(R.layout.fragment_note, container, false);
-
         recyclerNotas = vista.findViewById(R.id.recyclerNotas);
 
-        // 2 columnas
         recyclerNotas.setLayoutManager(
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
         );
@@ -44,20 +42,6 @@ public class NoteFragment extends Fragment {
 
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
-
-//        recyclerNotas.addOnScrollListener(new RecyclerView.OnScrollListener() {
-//            @Override
-//            public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
-//                super.onScrolled(recyclerView, dx, dy);
-//                BottomNavigationView bottomNav = requireActivity().findViewById(R.id.navMenu);
-//
-//                if (dy > 10) {
-//                    bottomNav.animate().translationY(bottomNav.getHeight()).setDuration(200);
-//                } else if (dy < -10) {
-//                    bottomNav.animate().translationY(0).setDuration(200);
-//                }
-//            }
-//        });
 
         return vista;
     }

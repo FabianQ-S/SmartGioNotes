@@ -44,12 +44,11 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         for (Etiqueta etiqueta : nota.getEtiquetas()) {
             Chip chip = new Chip(context);
 
-            // Estilo visual completo del chip
             chip.setText(etiqueta.getEtiquetaDescripcion());
-            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10); // Tamaño de texto
+            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
 
-            chip.setChipBackgroundColorResource(R.color.purple); // Fondo
-            chip.setTextColor(ContextCompat.getColor(context, R.color.white)); // Texto
+            chip.setChipBackgroundColorResource(R.color.primaryDark);
+            chip.setTextColor(ContextCompat.getColor(context, R.color.white));
 
             chip.setClickable(false);
             chip.setCheckable(false);

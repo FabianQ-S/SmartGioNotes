@@ -1,6 +1,8 @@
 package com.sgionotes.activities;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -40,10 +42,10 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
 
-        DrawerLayout drawerLayout = findViewById(R.id.drawer_layout);
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.nav_view);
 
-        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+        toggle = new ActionBarDrawerToggle(
                 this, drawerLayout, toolbar,
                 R.string.navigation_drawer_open,
                 R.string.navigation_drawer_close
@@ -56,20 +58,21 @@ public class MainActivity extends AppCompatActivity {
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
 
-            if (id == R.id.notes) {
-                loadFragment(notes);
-            } else if (id == R.id.tags) {
-                loadFragment(tags);
-            }
-            else if (item.getItemId() == R.id.trash) {
-                loadFragment(trash);
-            }
-            else if (item.getItemId() == R.id.tags_private) {
-                loadFragment(tagsPrivate);
-            }
             drawerLayout.closeDrawer(GravityCompat.START);
-            return true;
 
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (id == R.id.notes) {
+                    loadFragment(notes);
+                } else if (id == R.id.tags) {
+                    loadFragment(tags);
+                } else if (id == R.id.trash) {
+                    loadFragment(trash);
+                } else if (id == R.id.tags_private) {
+                    loadFragment(tagsPrivate);
+                }
+            }, 280);
+
+            return true;
         });
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content), (v, insets) -> {

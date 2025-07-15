@@ -6,7 +6,7 @@
         <item name="colorPrimaryVariant">@color/primaryDark</item>
         <item name="colorOnPrimary">@color/white</item>
         <item name="colorSecondary">@color/accent</item>
-        <item name="boxBackgroundColor">@color/white</item>
+        <item name="boxBackgroundColor">?attr/cardColor</item>
         <item name="colorError">@color/red</item>
         <item name="android:windowBackground">@color/white</item>
         <item name="android:textColorPrimary">@color/black</item>
@@ -14,6 +14,9 @@
 
         <item name="android:statusBarColor">@color/white</item>
         <item name="android:windowLightStatusBar">true</item>
+
+        <item name="colorCardBorder">@color/textSecondary</item>
+        <item name="cardColor">#E7E7E7</item>
 
     </style>
 
