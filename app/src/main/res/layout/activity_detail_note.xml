@@ -8,7 +8,7 @@
     android:layout_height="match_parent"
     style="@style/SCREEN"
     android:orientation="vertical"
-    tools:context=".DetailNote">
+    tools:context=".activities.DetailNoteActivity">
 
     <!-- Barra superior -->
     <androidx.appcompat.widget.Toolbar

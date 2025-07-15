@@ -1,5 +1,18 @@
 <resources>
-    <string name="app_name">sgionotes</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="app_name">SGioNotes</string>
+    <string name="login">Iniciar Sesión</string>
+    <string name="register">Registrarse</string>
+    <string name="email">Correo electrónico</string>
+    <string name="password">Contraseña</string>
+    <string name="name">Nombres</string>
+    <string name="last_name">Apellidos</string>
+    <string name="home_title">Hola %1$%</string>
+    <string name="welcome">¡Bienvenido!</string>
+    <string name="login_msg">Ingresa tus datos para acceder</string>
+    <string name="user">Usuario</string>
+    <string name="acceder">Acceder</string>
+    <string name="no_tienes_cuenta_creala_aqui">¿No tienes cuenta? Creala aqui</string>
+
+    <string name="navigation_drawer_open">Abrir menú</string>
+    <string name="navigation_drawer_close">Cerrar menú</string>
 </resources>

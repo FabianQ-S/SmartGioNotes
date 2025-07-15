@@ -1,4 +1,4 @@
-package com.sgionotes;
+package com.sgionotes.activities;
 
 import android.os.Bundle;
 import android.view.MenuItem;
@@ -10,7 +10,9 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-public class DetailNote extends AppCompatActivity {
+import com.sgionotes.R;
+
+public class DetailNoteActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

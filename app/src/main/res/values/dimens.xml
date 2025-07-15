@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <dimen name="padding_default">16dp</dimen>
+    <dimen name="padding_large">24dp</dimen>
+    <dimen name="card_corner_radius">12dp</dimen>
+    <dimen name="chip_radius">16dp</dimen>
+    <dimen name="avatar_size">80dp</dimen>
+    <dimen name="bottom_height">48dp</dimen>
+
+</resources>
