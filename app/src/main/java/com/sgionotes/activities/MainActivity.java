@@ -1,9 +1,7 @@
 package com.sgionotes.activities;
 
-import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -13,12 +11,10 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
-
-import com.google.android.material.bottomnavigation.BottomNavigationView;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.sgionotes.R;
 import com.sgionotes.fragments.NoteFragment;
+import com.sgionotes.fragments.NotePrivateFragment;
 import com.sgionotes.fragments.TagFragment;
 import com.sgionotes.fragments.TrashFragment;
 
@@ -29,6 +25,11 @@ public class MainActivity extends AppCompatActivity {
     DrawerLayout drawerLayout;
     NavigationView navigationView;
     ActionBarDrawerToggle toggle;
+
+    NoteFragment notes = new NoteFragment();
+    TagFragment tags = new TagFragment();
+    TrashFragment trash = new TrashFragment();
+    NotePrivateFragment tagsPrivate = new NotePrivateFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,19 +51,21 @@ public class MainActivity extends AppCompatActivity {
         drawerLayout.addDrawerListener(toggle);
         toggle.syncState();
 
+        loadFragment(notes);
+
         navigationView.setNavigationItemSelectedListener(item -> {
             int id = item.getItemId();
 
             if (id == R.id.notes) {
-                // Acción para "Inicio"
+                loadFragment(notes);
             } else if (id == R.id.tags) {
-                // Acción para "Configuración"
+                loadFragment(tags);
             }
             else if (item.getItemId() == R.id.trash) {
-
+                loadFragment(trash);
             }
             else if (item.getItemId() == R.id.tags_private) {
-
+                loadFragment(tagsPrivate);
             }
             drawerLayout.closeDrawer(GravityCompat.START);
             return true;
@@ -74,6 +77,13 @@ public class MainActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    public void loadFragment(Fragment fragment) {
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.contenedor, fragment)
+                .commit();
     }
 
 }
