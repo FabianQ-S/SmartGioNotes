@@ -7,4 +7,8 @@
 
     <!-- Color papelera -->
     <color name="trashButtonColor">@color/startGradient</color>
+
+    <!-- Colores chipsd -->
+    <color name="chipBackground">#4A148C</color>
+    <color name="chipText">#E1BEE7</color>
 </resources>

@@ -22,6 +22,7 @@ import com.sgionotes.activities.DetailNoteActivity;
 import com.sgionotes.adapters.NoteAdapter;
 import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Note;
+import com.sgionotes.models.Tag;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,6 +85,13 @@ public class NoteFragment extends Fragment {
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
             intent.putExtra("titulo", nota.getTitulo());
             intent.putExtra("contenido", nota.getContenido());
+
+            ArrayList<String> etiquetas = new ArrayList<>();
+            for (Tag tag : nota.getEtiquetas()) {
+                etiquetas.add(tag.getEtiquetaDescripcion());
+            }
+            intent.putStringArrayListExtra("etiquetas", etiquetas);
+
             startActivity(intent);
         });
 

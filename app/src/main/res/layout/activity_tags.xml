@@ -16,21 +16,24 @@
         android:background="@android:color/transparent"
         app:navigationIcon="?attr/homeAsUpIndicator" />
 
-    <!-- Contenido simplificado -->
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chipGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="16dp"
+        app:chipSpacing="8dp"
+        app:lineSpacing="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:background="@drawable/divider_gradient" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center">
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Funcionalidad en desarrollo"
-            android:textSize="18sp"
-            style="@style/TEXT"
-            android:gravity="center" />
-
-    </LinearLayout>
+        android:orientation="vertical" />
 
 </LinearLayout>

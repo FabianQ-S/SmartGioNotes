@@ -19,11 +19,14 @@ import androidx.core.view.WindowInsetsCompat;
 import com.google.android.material.snackbar.Snackbar;
 import com.sgionotes.R;
 
+import java.util.ArrayList;
+
 public class DetailNoteActivity extends AppCompatActivity {
 
     EditText etTitulo;
     EditText etContenido;
     LinearLayout detailNote;
+    private ArrayList<String> etiquetasNota;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +51,7 @@ public class DetailNoteActivity extends AppCompatActivity {
             String titulo = intent.getStringExtra("titulo");
             String contenido = intent.getStringExtra("contenido");
             boolean desdePapelera = intent.getBooleanExtra("desdePapelera", false);
+            etiquetasNota = intent.getStringArrayListExtra("etiquetas");
 
             etTitulo.setText(titulo);
             etContenido.setText(contenido);
@@ -76,6 +80,9 @@ public class DetailNoteActivity extends AppCompatActivity {
         // Configurar botón flotante de etiquetas
         findViewById(R.id.fabEtiquetas).setOnClickListener(v -> {
             Intent intentTags = new Intent(DetailNoteActivity.this, TagsActivity.class);
+            if (etiquetasNota != null) {
+                intentTags.putStringArrayListExtra("tags", etiquetasNota);
+            }
             startActivity(intentTags);
             overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
         });
