@@ -17,5 +17,10 @@
     <color name="accent">#FFB84C</color>
 
     <color name="toolbarTitleBackground">?attr/boxBackgroundColor</color>
+
     <color name="alternateColor">#000</color>
+
+    <color name="startGradient">#673ab7</color> <!-- Purple -->
+    <color name="endGradient">#ff7000</color> <!-- Orange -->
+
 </resources>
