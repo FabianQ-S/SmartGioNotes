@@ -72,6 +72,13 @@ public class DetailNoteActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+
+        // Configurar botón flotante de etiquetas
+        findViewById(R.id.fabEtiquetas).setOnClickListener(v -> {
+            Intent intentTags = new Intent(DetailNoteActivity.this, TagsActivity.class);
+            startActivity(intentTags);
+            overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+        });
     }
 
     @Override
