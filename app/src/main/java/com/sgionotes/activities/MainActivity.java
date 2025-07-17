@@ -1,8 +1,10 @@
 package com.sgionotes.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.View;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -69,6 +71,11 @@ public class MainActivity extends AppCompatActivity {
                     loadFragment(tags);
                 } else if (id == R.id.trash) {
                     loadFragment(trash);
+                }
+                else if (id == R.id.btnLogout) {
+                    Intent intent = new Intent(this, LoginActivity.class);
+                    startActivity(intent);
+                    finish();
                 }
 //                else if (id == R.id.tags_private) {
 //                    loadFragment(tagsPrivate);

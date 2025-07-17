@@ -66,6 +66,7 @@
             android:inputType="textEmailAddress"
             android:hint="@string/email"
             android:padding="14dp"
+            android:imeOptions="actionNext"
             android:background="@drawable/bg_edittext_rounded"
             android:layout_marginTop="15dp"
             android:layout_marginBottom="6dp"/>
@@ -84,6 +85,7 @@
             android:inputType="textPassword"
             android:hint="@string/password"
             android:padding="14dp"
+            android:imeOptions="actionDone"
             android:background="@drawable/bg_edittext_rounded"
             android:layout_marginTop="6dp"/>
 

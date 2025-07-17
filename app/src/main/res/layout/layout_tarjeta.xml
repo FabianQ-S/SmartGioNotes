@@ -5,7 +5,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="5dp"
     card_view:cardCornerRadius="10dp"
     card_view:cardElevation="5dp"
     app:cardBackgroundColor="@android:color/transparent"
@@ -18,7 +17,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="15dp"
         android:gravity="center_horizontal"
         android:background="@drawable/bg_note_border">  <!-- set gradient border here -->
 

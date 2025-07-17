@@ -1,23 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:id="@+id/notes"
-        android:icon="@drawable/note_icon"
-        android:title="Mis Notas"/>
 
-    <item
-        android:id="@+id/tags"
-        android:icon="@drawable/tag_icon"
-        android:title="Etiquetas"/>
+    <group android:id="@+id/group1">
 
-    <item
-        android:id="@+id/trash"
-        android:icon="@drawable/trash_icon"
-        android:title="Papelera"/>
+        <item
+            android:id="@+id/notes"
+            android:icon="@drawable/note_icon"
+            android:title="Mis Notas"
+            android:orderInCategory="1" />
 
-<!--    <item-->
-<!--        android:id="@+id/tags_private"-->
-<!--        android:icon="@drawable/baseline_lock_24"-->
-<!--        android:title="Notas protegidas"/>-->
+        <item
+            android:id="@+id/tags"
+            android:icon="@drawable/tag_icon"
+            android:title="Etiquetas"
+            android:orderInCategory="2" />
+
+        <item
+            android:id="@+id/trash"
+            android:icon="@drawable/trash_icon"
+            android:title="Papelera"
+            android:orderInCategory="3" />
+
+        <!--    <item-->
+        <!--        android:id="@+id/tags_private"-->
+        <!--        android:icon="@drawable/baseline_lock_24"-->
+        <!--        android:title="Notas protegidas"/>-->
+
+    </group>
+
+    <group android:id="@+id/group2">
+
+        <item
+            android:id="@+id/btnLogout"
+            android:icon="@drawable/logout_24px"
+            android:title="Cerrar sesión"
+            android:orderInCategory="101" />
+
+    </group>
 
 </menu>
