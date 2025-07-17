@@ -24,35 +24,37 @@ public class LoginActivity extends AppCompatActivity {
     EditText txtPassword;
     LinearLayout loginMain;
 
+    String email;
+    String password;
+    boolean registroExitoso;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
 
-        String email = "pepito@gmail.com";
-        String password = "123456";
+        email = "pepito@gmail.com";
+        password = "123456";
+        registroExitoso = getIntent().getBooleanExtra("registro_exitoso", false);
 
         txtEmail = findViewById(R.id.txtEmail);
         txtPassword = findViewById(R.id.txtPassword);
         btnLogin = findViewById(R.id.btnLogin);
         loginMain = findViewById(R.id.loginMain);
 
+        if (registroExitoso) {
+            Snackbar.make(loginMain, "Cuenta creada. Inicia sesión con tus credenciales", Snackbar.LENGTH_LONG).show();
+        }
+
         btnLogin.setOnClickListener(btn -> {
 
-            if (txtEmail.getText().toString().isEmpty() ||
-                    txtPassword.getText().toString().isEmpty()) {
-                Snackbar.make(loginMain, "Completa los campos para acceder", Snackbar.LENGTH_LONG).show();
-            }
-            else if (txtEmail.getText().toString().equals(email) &&
-                    txtPassword.getText().toString().equals(password)) {
+            if (validateLogin()) {
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 startActivity(intent);
                 finish();
             }
-            else {
-                Snackbar.make(loginMain, "Usuario y/o contraseña inválidos", Snackbar.LENGTH_SHORT).show();
-            }
+
         });
 
         registerRedirect = findViewById(R.id.registerRedirect);
@@ -68,5 +70,23 @@ public class LoginActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    private boolean validateLogin() {
+
+        if (txtEmail.getText().toString().isEmpty() ||
+                txtPassword.getText().toString().isEmpty()) {
+            Snackbar.make(loginMain, "Completa los campos para acceder", Snackbar.LENGTH_LONG).show();
+            return false;
+        }
+        else if (txtEmail.getText().toString().equals(email) &&
+                txtPassword.getText().toString().equals(password)) {
+            return true;
+        }
+        else {
+            Snackbar.make(loginMain, "Usuario y/o contraseña inválidos", Snackbar.LENGTH_SHORT).show();
+            return false;
+        }
+
     }
 }
