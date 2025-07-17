@@ -24,7 +24,7 @@ public class NoteFragment extends Fragment {
     private List<Note> listaNotas;
 
     public NoteFragment() {
-        generarData = new GenerarData();
+        generarData = new GenerarData(1);
     }
 
     @Override

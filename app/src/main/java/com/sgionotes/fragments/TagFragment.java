@@ -3,64 +3,51 @@ package com.sgionotes.fragments;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
 import com.sgionotes.R;
+import com.sgionotes.adapters.NoteAdapter;
+import com.sgionotes.adapters.TagAdapter;
+import com.sgionotes.models.GenerarData;
+import com.sgionotes.models.Tag;
 
-/**
- * A simple {@link Fragment} subclass.
- * Use the {@link TagFragment#newInstance} factory method to
- * create an instance of this fragment.
- */
+import java.util.List;
+
 public class TagFragment extends Fragment {
 
-    // TODO: Rename parameter arguments, choose names that match
-    // the fragment initialization parameters, e.g. ARG_ITEM_NUMBER
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
-
-    // TODO: Rename and change types of parameters
-    private String mParam1;
-    private String mParam2;
+    private GenerarData generarData;
+    private RecyclerView recyclerTags;
+    private TagAdapter tagAdapter;
+    private List<Tag> listaEtiquetas;
 
     public TagFragment() {
-        // Required empty public constructor
-    }
-
-    /**
-     * Use this factory method to create a new instance of
-     * this fragment using the provided parameters.
-     *
-     * @param param1 Parameter 1.
-     * @param param2 Parameter 2.
-     * @return A new instance of fragment TagFragment.
-     */
-    // TODO: Rename and change types and number of parameters
-    public static TagFragment newInstance(String param1, String param2) {
-        TagFragment fragment = new TagFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        if (getArguments() != null) {
-            mParam1 = getArguments().getString(ARG_PARAM1);
-            mParam2 = getArguments().getString(ARG_PARAM2);
-        }
+        generarData = new GenerarData(2);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
-        return inflater.inflate(R.layout.fragment_tag, container, false);
+
+        View vista = inflater.inflate(R.layout.fragment_tag, container, false);
+        recyclerTags = vista.findViewById(R.id.recyclerTags);
+
+        recyclerTags.setLayoutManager(
+                new LinearLayoutManager(getContext())
+        );
+
+        // Data estatica
+        listaEtiquetas = generarData.getListaEtiquetas();
+
+        tagAdapter = new TagAdapter(listaEtiquetas);
+        recyclerTags.setAdapter(tagAdapter);
+
+        return vista;
+
     }
 }

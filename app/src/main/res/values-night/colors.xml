@@ -17,5 +17,5 @@
     <color name="accent">#FFB84C</color>
 
     <color name="toolbarTitleBackground">?attr/boxBackgroundColor</color>
-    <color name="alternateColor">#000</color>
+    <color name="alternateColor">#fff</color>
 </resources>

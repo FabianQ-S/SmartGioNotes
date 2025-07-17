@@ -1,9 +1,9 @@
 package com.sgionotes.models;
 
-public class Etiqueta {
+public class Tag {
     private String etiquetaDescripcion;
 
-    public Etiqueta(String etiquetaDescripcion) {
+    public Tag(String etiquetaDescripcion) {
         this.etiquetaDescripcion = etiquetaDescripcion;
     }
 

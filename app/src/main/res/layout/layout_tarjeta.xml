@@ -23,7 +23,7 @@
             android:layout_height="wrap_content"
             style="@style/TEXT"
             android:textStyle="bold"
-            android:textSize="14sp"
+            android:textSize="17sp"
             android:layout_marginBottom="4dp"/>
 
         <!-- Contenido -->
@@ -32,7 +32,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             style="@style/TEXT"
-            android:textSize="12sp"
+            android:textSize="16sp"
             android:layout_marginBottom="4dp" />
 
         <!-- Etiquetas como Chips -->

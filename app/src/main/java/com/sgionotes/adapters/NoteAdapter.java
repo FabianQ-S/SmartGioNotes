@@ -6,13 +6,16 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
+import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.sgionotes.R;
-import com.sgionotes.models.Etiqueta;
+import com.sgionotes.models.Tag;
 import com.sgionotes.models.Note;
+
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder> {
@@ -26,13 +29,14 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
     }
 
     @Override
-    public NotaViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View vista = LayoutInflater.from(parent.getContext()).inflate(R.layout.layout_tarjeta, parent, false);
+    public NotaViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        View vista = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.layout_tarjeta, parent, false);
         return new NotaViewHolder(vista);
     }
 
     @Override
-    public void onBindViewHolder(NotaViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull NotaViewHolder holder, int position) {
 
         Note nota = listaNotas.get(position);
         holder.txtTitulo.setText(nota.getTitulo());
@@ -41,10 +45,10 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         // Limpia los chips anteriores al reciclar vista
         holder.chipGroup.removeAllViews();
 
-        for (Etiqueta etiqueta : nota.getEtiquetas()) {
+        for (Tag tag : nota.getEtiquetas()) {
             Chip chip = new Chip(context);
 
-            chip.setText(etiqueta.getEtiquetaDescripcion());
+            chip.setText(tag.getEtiquetaDescripcion());
             chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
 
             chip.setChipBackgroundColorResource(R.color.primaryDark);

@@ -6,13 +6,13 @@ public class Note {
 
     private String titulo;
     private String contenido;
-    private List<Etiqueta> etiquetas;
+    private List<Tag> tags;
 
-    public Note(String titulo, String contenido, List<Etiqueta> etiquetas,
+    public Note(String titulo, String contenido, List<Tag> tags,
                 boolean cortarContenido) {
         this.titulo = titulo;
         this.contenido = cortarContenido(contenido, cortarContenido);
-        this.etiquetas = etiquetas;
+        this.tags = tags;
     }
 
     public Note(String contenido) {
@@ -35,12 +35,12 @@ public class Note {
         this.titulo = titulo;
     }
 
-    public List<Etiqueta> getEtiquetas() {
-        return etiquetas;
+    public List<Tag> getEtiquetas() {
+        return tags;
     }
 
-    public void setEtiquetas(List<Etiqueta> etiquetas) {
-        this.etiquetas = etiquetas;
+    public void setEtiquetas(List<Tag> tags) {
+        this.tags = tags;
     }
 
     private String cortarContenido(String contenido, boolean swt) {

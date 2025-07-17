@@ -70,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
                 } else if (id == R.id.tags_private) {
                     loadFragment(tagsPrivate);
                 }
-            }, 280);
+            }, 300);
 
             return true;
         });
