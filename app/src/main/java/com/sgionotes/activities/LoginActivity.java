@@ -18,14 +18,14 @@ import com.sgionotes.R;
 
 public class LoginActivity extends AppCompatActivity {
 
-    Button btnLogin;
-    TextView registerRedirect;
-    EditText txtEmail;
-    EditText txtPassword;
-    LinearLayout loginMain;
+    private Button btnLogin;
+    private TextView registerRedirect;
+    private EditText txtEmail;
+    private EditText txtPassword;
+    private LinearLayout loginMain;
 
-    String email;
-    String password;
+    private String email;
+    private String password;
     boolean registroExitoso;
 
     @Override

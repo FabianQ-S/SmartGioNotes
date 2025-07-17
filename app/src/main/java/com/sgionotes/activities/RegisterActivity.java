@@ -20,13 +20,13 @@ import java.util.regex.Pattern;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    TextView txtLoginRedirect;
-    TextView txtNombres;
-    TextView txtApellidos;
-    TextView txtCorreo;
-    TextView txtPassword;
-    LinearLayout registerMain;
-    Button btnRegister;
+    private TextView txtLoginRedirect;
+    private TextView txtNombres;
+    private TextView txtApellidos;
+    private TextView txtCorreo;
+    private TextView txtPassword;
+    private LinearLayout registerMain;
+    private Button btnRegister;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

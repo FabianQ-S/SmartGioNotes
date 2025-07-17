@@ -34,10 +34,15 @@ public class NoteFragment extends Fragment {
     private List<Note> listaNotas;
     private String titulo;
     private String contenido;
-    FloatingActionButton floatingActionButton;
+    private int lastId;
+    private FloatingActionButton floatingActionButton;
 
     public NoteFragment() {
         listaNotas = GenerarData.getInstance().getListaNotas();
+        lastId = listaNotas.stream()
+                .mapToInt(Note::getId)
+                .max()
+                .orElse(0);
     }
 
     private ActivityResultLauncher<Intent> launchNewNoteActivity;
@@ -50,17 +55,25 @@ public class NoteFragment extends Fragment {
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        titulo = result.getData().getStringExtra("titulo");
-                        contenido = result.getData().getStringExtra("contenido");
+                        Intent data = result.getData();
+                        boolean esNueva = data.getBooleanExtra("esNueva", false);
 
-                        if (!titulo.isEmpty() || !contenido.isEmpty()) {
-                            Note nuevaNota = new Note(
-                                    listaNotas.get(listaNotas.size()-1).getId(),
-                                    titulo, contenido, new ArrayList<>(), true, false
-                            );
-                            listaNotas.add(0, nuevaNota);
-                            notaAdapter.notifyItemInserted(0);
-                            recyclerNotas.scrollToPosition(0);
+                        if (esNueva) {
+                            titulo = data.getStringExtra("titulo");
+                            contenido = data.getStringExtra("contenido");
+
+                            if (!titulo.isEmpty() || !contenido.isEmpty()) {
+                                int nuevoId = ++lastId;
+                                Note nuevaNota = new Note(nuevoId, titulo, contenido, new ArrayList<>(), true, false);
+                                listaNotas.add(0, nuevaNota);
+                                notaAdapter.notifyItemInserted(0);
+                                recyclerNotas.scrollToPosition(0);
+                            }
+                        } else {
+                            int position = data.getIntExtra("position", -1);
+                            if (position != -1) {
+                                notaAdapter.notifyItemChanged(position);
+                            }
                         }
                     }
                 }
@@ -82,17 +95,20 @@ public class NoteFragment extends Fragment {
         recyclerNotas.setAdapter(notaAdapter);
 
         notaAdapter.setOnItemClickListener(nota -> {
+            int position = listaNotas.indexOf(nota);
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
+            intent.putExtra("id", String.valueOf(nota.getId()));
             intent.putExtra("titulo", nota.getTitulo());
             intent.putExtra("contenido", nota.getContenido());
-
+            intent.putExtra("estaCreado", true);
+            intent.putExtra("position", position);
             ArrayList<String> etiquetas = new ArrayList<>();
             for (Tag tag : nota.getEtiquetas()) {
                 etiquetas.add(tag.getEtiquetaDescripcion());
             }
             intent.putStringArrayListExtra("etiquetas", etiquetas);
+            launchNewNoteActivity.launch(intent);
 
-            startActivity(intent);
         });
 
         floatingActionButton.setOnClickListener(btn -> {

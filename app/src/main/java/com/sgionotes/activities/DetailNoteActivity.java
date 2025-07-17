@@ -6,6 +6,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -18,15 +19,23 @@ import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.sgionotes.R;
+import com.sgionotes.models.GenerarData;
+import com.sgionotes.models.Note;
+import com.sgionotes.models.Tag;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 import java.util.ArrayList;
 
 public class DetailNoteActivity extends AppCompatActivity {
 
-    EditText etTitulo;
-    EditText etContenido;
-    LinearLayout detailNote;
     private ArrayList<String> etiquetasNota;
+    private TextView txtIdNotaDetailNote;
+    private EditText etTitulo;
+    private EditText etContenido;
+    private LinearLayout detailNote;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,17 +51,25 @@ public class DetailNoteActivity extends AppCompatActivity {
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
+        txtIdNotaDetailNote = findViewById(R.id.txtIdNotaDetailNote);
         etTitulo = findViewById(R.id.etTitulo);
         etContenido = findViewById(R.id.etmDetalleNota);
         detailNote = findViewById(R.id.detailNote);
 
+        boolean esNueva = getIntent().getBooleanExtra("esNueva", false);
+        if (esNueva) {
+            txtIdNotaDetailNote.setText("");
+        }
+
         Intent intent = getIntent();
         if (intent != null) {
+            String id = intent.getStringExtra("id");
             String titulo = intent.getStringExtra("titulo");
             String contenido = intent.getStringExtra("contenido");
             boolean desdePapelera = intent.getBooleanExtra("desdePapelera", false);
             etiquetasNota = intent.getStringArrayListExtra("etiquetas");
 
+            txtIdNotaDetailNote.setText(id);
             etTitulo.setText(titulo);
             etContenido.setText(contenido);
 
@@ -77,7 +94,6 @@ public class DetailNoteActivity extends AppCompatActivity {
             return insets;
         });
 
-        // Configurar botón flotante de etiquetas
         findViewById(R.id.fabEtiquetas).setOnClickListener(v -> {
             Intent intentTags = new Intent(DetailNoteActivity.this, TagsActivity.class);
             if (etiquetasNota != null) {
@@ -91,6 +107,8 @@ public class DetailNoteActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         devolverSiEsNuevo();
+        guardarCambios();
+        //System.out.println(txtIdNotaDetailNote.getText() + " = id = part1" );
         super.onBackPressed();
     }
 
@@ -98,7 +116,9 @@ public class DetailNoteActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
             devolverSiEsNuevo();
+            guardarCambios();
             finish();
+            //System.out.println(txtIdNotaDetailNote.getText() + " = id = part2" );
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -116,10 +136,38 @@ public class DetailNoteActivity extends AppCompatActivity {
                 Intent data = new Intent();
                 data.putExtra("titulo", titulo);
                 data.putExtra("contenido", contenido);
+                data.putExtra("esNueva", true); //
                 setResult(RESULT_OK, data);
             } else {
                 setResult(RESULT_CANCELED);
             }
+        } else {
+            guardarCambios();
+            int pos = intent.getIntExtra("position", -1);
+            if (pos != -1) {
+                Intent data = new Intent();
+                data.putExtra("position", pos);
+                setResult(RESULT_OK, data);
+            }
+        }
+    }
+
+
+
+    private void guardarCambios() {
+        String id = txtIdNotaDetailNote.getText().toString().trim();
+        if (!id.isEmpty()) {
+            int idNota = Integer.parseInt(id);
+            String titulo = etTitulo.getText().toString().trim();
+            String contenido = etContenido.getText().toString().trim();
+
+            GenerarData.getInstance()
+                    .getListaNotas().stream()
+                    .filter(obj -> obj.getId() == idNota)
+                    .findFirst().ifPresent(nota -> {
+                        nota.setTitulo(titulo);
+                        nota.setContenido(contenido);
+                    });
         }
     }
 

@@ -25,14 +25,14 @@ import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
-    DrawerLayout drawerLayout;
-    NavigationView navigationView;
-    ActionBarDrawerToggle toggle;
+    private DrawerLayout drawerLayout;
+    private NavigationView navigationView;
+    private ActionBarDrawerToggle toggle;
 
-    NoteFragment notes = new NoteFragment();
-    TagFragment tags = new TagFragment();
-    TrashFragment trash = new TrashFragment();
-    NotePrivateFragment tagsPrivate = new NotePrivateFragment();
+    private NoteFragment notes = new NoteFragment();
+    private TagFragment tags = new TagFragment();
+    private TrashFragment trash = new TrashFragment();
+    private NotePrivateFragment tagsPrivate = new NotePrivateFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

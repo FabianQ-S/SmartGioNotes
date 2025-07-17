@@ -56,6 +56,7 @@ public class TrashFragment extends Fragment {
 
         notaAdapter.setOnItemClickListener(nota -> {
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
+            intent.putExtra("id", String.valueOf(nota.getId()));
             intent.putExtra("titulo", nota.getTitulo());
             intent.putExtra("contenido", nota.getContenido());
             intent.putExtra("desdePapelera", true);
