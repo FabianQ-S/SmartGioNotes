@@ -8,17 +8,19 @@
     android:layout_margin="5dp"
     card_view:cardCornerRadius="10dp"
     card_view:cardElevation="5dp"
+    app:cardBackgroundColor="@android:color/transparent"
+    app:cardUseCompatPadding="true"
+    app:cardPreventCornerOverlap="false"
     android:clickable="true"
-    android:focusable="true"
-    android:background="@android:color/transparent">
+    android:focusable="true">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="?attr/cardColor"
         android:padding="16dp"
-        android:gravity="center_horizontal">
+        android:gravity="center_horizontal"
+        android:background="@drawable/bg_note_border">  <!-- set gradient border here -->
 
         <!-- Título -->
         <TextView
