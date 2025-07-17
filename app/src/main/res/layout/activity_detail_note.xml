@@ -22,38 +22,53 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- Titulo Nota -->
+        <!-- Titulo Nota con fondo mejorado -->
         <EditText
             android:id="@+id/etTitulo"
             style="@style/TEXT"
             android:layout_marginEnd="20dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="20dp"
             android:layout_marginStart="20dp"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
+            android:background="@drawable/title_background"
+            android:padding="16dp"
             android:inputType="text"
             android:hint="Título"
-            app:layout_constraintBottom_toTopOf="@+id/etmDetalleNota"
-            app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintVertical_bias="0.444"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toTopOf="parent" />
 
-            />
+        <!-- Divisor con degradado -->
+        <View
+            android:id="@+id/divider"
+            android:layout_width="0dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:background="@drawable/divider_gradient"
+            app:layout_constraintTop_toBottomOf="@+id/etTitulo"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
 
         <!-- Detalle Nota -->
         <EditText
             android:id="@+id/etmDetalleNota"
             style="@style/TEXT"
-            android:hint="Nota"
+            android:hint="Escribe tu nota aquí..."
             android:layout_marginEnd="20dp"
             android:layout_marginStart="20dp"
-            android:layout_marginTop="18dp"
+            android:layout_marginTop="20dp"
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:background="@android:color/transparent"
             android:gravity="start|top"
             android:inputType="textMultiLine"
-            app:layout_constraintTop_toBottomOf="@+id/etTitulo"
+            android:padding="16dp"
+            android:textSize="16sp"
+            android:lineSpacingExtra="4dp"
+            app:layout_constraintTop_toBottomOf="@+id/divider"
             app:layout_constraintBottom_toBottomOf="parent" />
 
 
