@@ -15,9 +15,9 @@
         android:icon="@drawable/trash_icon"
         android:title="Papelera"/>
 
-    <item
-        android:id="@+id/tags_private"
-        android:icon="@drawable/baseline_lock_24"
-        android:title="Notas protegidas"/>
+<!--    <item-->
+<!--        android:id="@+id/tags_private"-->
+<!--        android:icon="@drawable/baseline_lock_24"-->
+<!--        android:title="Notas protegidas"/>-->
 
 </menu>

@@ -5,21 +5,25 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.snackbar.Snackbar;
 import com.sgionotes.R;
 
 public class DetailNoteActivity extends AppCompatActivity {
 
     EditText etTitulo;
     EditText etContenido;
+    LinearLayout detailNote;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +41,7 @@ public class DetailNoteActivity extends AppCompatActivity {
 
         etTitulo = findViewById(R.id.etTitulo);
         etContenido = findViewById(R.id.etmDetalleNota);
+        detailNote = findViewById(R.id.detailNote);
 
         Intent intent = getIntent();
         if (intent != null) {
@@ -54,7 +59,7 @@ public class DetailNoteActivity extends AppCompatActivity {
                 etContenido.setClickable(true);
 
                 View.OnClickListener mostrarMensaje = v -> {
-                    Toast.makeText(this, "No es posible editar notas desde la papelera", Toast.LENGTH_LONG).show();
+                    Snackbar.make(detailNote, "No es posible editar notas desde la papelera", Snackbar.LENGTH_LONG).show();
                 };
 
                 etTitulo.setOnClickListener(mostrarMensaje);

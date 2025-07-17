@@ -67,9 +67,10 @@ public class MainActivity extends AppCompatActivity {
                     loadFragment(tags);
                 } else if (id == R.id.trash) {
                     loadFragment(trash);
-                } else if (id == R.id.tags_private) {
-                    loadFragment(tagsPrivate);
                 }
+//                else if (id == R.id.tags_private) {
+//                    loadFragment(tagsPrivate);
+//                }
             }, 300);
 
             return true;
