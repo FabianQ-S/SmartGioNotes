@@ -4,15 +4,19 @@ import java.util.List;
 
 public class Note {
 
+    private int id;
     private String titulo;
     private String contenido;
     private List<Tag> tags;
+    private boolean isTrash;
 
-    public Note(String titulo, String contenido, List<Tag> tags,
-                boolean cortarContenido) {
+    public Note(int id, String titulo, String contenido, List<Tag> tags,
+                boolean cortarContenido, boolean isTrash) {
         this.titulo = titulo;
         this.contenido = cortarContenido(contenido, cortarContenido);
         this.tags = tags;
+        this.id = id;
+        this.isTrash = isTrash;
     }
 
     public Note(String contenido) {
@@ -41,6 +45,30 @@ public class Note {
 
     public void setEtiquetas(List<Tag> tags) {
         this.tags = tags;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public void setTags(List<Tag> tags) {
+        this.tags = tags;
+    }
+
+    public boolean isTrash() {
+        return isTrash;
+    }
+
+    public void setTrash(boolean trash) {
+        isTrash = trash;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public List<Tag> getTags() {
+        return tags;
     }
 
     private String cortarContenido(String contenido, boolean swt) {

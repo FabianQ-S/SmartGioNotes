@@ -20,11 +20,11 @@ import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Note;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 
 public class TrashFragment extends Fragment {
 
-    private GenerarData generarData;
     private RecyclerView recyclerTrashNotes;
 
     private NoteAdapter notaAdapter;
@@ -32,7 +32,10 @@ public class TrashFragment extends Fragment {
     private Button btnVaciarPapelera;
 
     public TrashFragment() {
-        generarData = new GenerarData(3);
+        listaNotasTrash = GenerarData.getInstance().getListaNotas()
+                .stream()
+                .filter(Note::isTrash)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -47,7 +50,7 @@ public class TrashFragment extends Fragment {
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
         );
 
-        listaNotasTrash = generarData.getListaNotas();
+
         notaAdapter = new NoteAdapter(getContext(), listaNotasTrash);
         recyclerTrashNotes.setAdapter(notaAdapter);
 

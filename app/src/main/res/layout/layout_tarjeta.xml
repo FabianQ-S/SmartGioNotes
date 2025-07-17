@@ -22,6 +22,13 @@
         android:gravity="center_horizontal"
         android:background="@drawable/bg_note_border">  <!-- set gradient border here -->
 
+        <!-- ID oculto para la nota -->
+        <TextView
+            android:id="@+id/txtIdNota"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone"/>
+
         <!-- Título -->
         <TextView
             android:id="@+id/txtTitulo"

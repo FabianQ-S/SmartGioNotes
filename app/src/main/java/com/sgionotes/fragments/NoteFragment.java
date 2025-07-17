@@ -28,18 +28,15 @@ import java.util.List;
 
 public class NoteFragment extends Fragment {
 
-    private GenerarData generarData;
     private RecyclerView recyclerNotas;
     private NoteAdapter notaAdapter;
     private List<Note> listaNotas;
-
-    String titulo;
-    String contenido;
+    private String titulo;
+    private String contenido;
     FloatingActionButton floatingActionButton;
 
     public NoteFragment() {
-        generarData = new GenerarData(1);
-        listaNotas = generarData.getListaNotas();
+        listaNotas = GenerarData.getInstance().getListaNotas();
     }
 
     private ActivityResultLauncher<Intent> launchNewNoteActivity;
@@ -56,7 +53,10 @@ public class NoteFragment extends Fragment {
                         contenido = result.getData().getStringExtra("contenido");
 
                         if (!titulo.isEmpty() || !contenido.isEmpty()) {
-                            Note nuevaNota = new Note(titulo, contenido, new ArrayList<>(), true);
+                            Note nuevaNota = new Note(
+                                    listaNotas.get(listaNotas.size()-1).getId(),
+                                    titulo, contenido, new ArrayList<>(), true, false
+                            );
                             listaNotas.add(0, nuevaNota);
                             notaAdapter.notifyItemInserted(0);
                             recyclerNotas.scrollToPosition(0);

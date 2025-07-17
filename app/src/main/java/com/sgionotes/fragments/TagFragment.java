@@ -28,7 +28,6 @@ import java.util.List;
 
 public class TagFragment extends Fragment {
 
-    private GenerarData generarData;
     private RecyclerView recyclerTags;
     private TagAdapter tagAdapter;
     private List<Tag> listaEtiquetas;
@@ -36,8 +35,7 @@ public class TagFragment extends Fragment {
     private ImageView btnAddTag;
 
     public TagFragment() {
-        generarData = new GenerarData(2);
-        listaEtiquetas = generarData.getListaEtiquetas();
+        listaEtiquetas = GenerarData.getInstance().getListaEtiquetas();
     }
 
     @Override

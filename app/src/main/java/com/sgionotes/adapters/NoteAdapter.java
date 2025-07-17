@@ -22,7 +22,6 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
 
     private Context context;
     private List<Note> listaNotas;
-
     private OnItemClickListener listener;
 
     public void setOnItemClickListener(OnItemClickListener listener) {
@@ -49,11 +48,11 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
     public void onBindViewHolder(@NonNull NotaViewHolder holder, int position) {
 
         Note nota = listaNotas.get(position);
+        holder.txtIdNota.setText(String.valueOf(nota.getId()));
         holder.txtTitulo.setText(nota.getTitulo());
         holder.txtContenido.setText(nota.getContenido());
 
         LayoutInflater inflater = LayoutInflater.from(context);
-        // Limpia los chips anteriores al reciclar vista
         holder.chipGroup.removeAllViews();
 
         for (Tag tag : nota.getEtiquetas()) {
@@ -78,12 +77,14 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
     }
 
     public static class NotaViewHolder extends RecyclerView.ViewHolder {
+        TextView txtIdNota;
         TextView txtTitulo;
         TextView txtContenido;
         ChipGroup chipGroup;
 
         public NotaViewHolder(View itemView) {
             super(itemView);
+            txtIdNota = itemView.findViewById(R.id.txtIdNota);
             txtTitulo = itemView.findViewById(R.id.txtTitulo);
             txtContenido = itemView.findViewById(R.id.txtContenido);
             chipGroup = itemView.findViewById(R.id.chipGroupEtiquetas);
