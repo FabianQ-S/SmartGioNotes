@@ -2,6 +2,9 @@
 <resources>
     <color name="alternateColor">#fff</color>
     <!-- Gradient modo oscuro -->
-    <color name="startGradient">#673ab7</color> <!-- Purple -->
-    <color name="endGradient">#ff7000</color> <!-- Orange -->
+    <color name="startGradient">#673ab7</color>
+    <color name="endGradient">#ff7000</color>
+
+    <!-- Color papelera -->
+    <color name="trashButtonColor">@color/startGradient</color>
 </resources>

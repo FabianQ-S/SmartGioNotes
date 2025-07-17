@@ -22,7 +22,7 @@
         android:layout_gravity="bottom"
         android:textStyle="bold"
         android:textSize="15sp"
-        android:backgroundTint="#B30A0A"
+        android:backgroundTint="@color/trashButtonColor"
         android:textColor="@android:color/white"
         android:layout_margin="18dp" />
 
