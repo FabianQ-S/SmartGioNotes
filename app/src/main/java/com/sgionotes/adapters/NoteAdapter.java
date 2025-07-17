@@ -42,21 +42,15 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         holder.txtTitulo.setText(nota.getTitulo());
         holder.txtContenido.setText(nota.getContenido());
 
+        LayoutInflater inflater = LayoutInflater.from(context);
         // Limpia los chips anteriores al reciclar vista
         holder.chipGroup.removeAllViews();
 
         for (Tag tag : nota.getEtiquetas()) {
-            Chip chip = new Chip(context);
-
-            chip.setText(tag.getEtiquetaDescripcion());
-            chip.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-
-            chip.setChipBackgroundColorResource(R.color.primaryDark);
-            chip.setTextColor(ContextCompat.getColor(context, R.color.white));
-
+            Chip chip = (Chip) inflater.inflate(R.layout.layout_item_chip, holder.chipGroup, false);
             chip.setClickable(false);
             chip.setCheckable(false);
-
+            chip.setText(tag.getEtiquetaDescripcion());
             holder.chipGroup.addView(chip);
         }
 

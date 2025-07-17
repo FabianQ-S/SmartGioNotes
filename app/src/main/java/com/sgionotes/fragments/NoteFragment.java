@@ -1,5 +1,6 @@
 package com.sgionotes.fragments;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -10,7 +11,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.sgionotes.R;
+import com.sgionotes.activities.DetailNoteActivity;
 import com.sgionotes.adapters.NoteAdapter;
 import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Note;
@@ -22,6 +25,7 @@ public class NoteFragment extends Fragment {
     private RecyclerView recyclerNotas;
     private NoteAdapter notaAdapter;
     private List<Note> listaNotas;
+    FloatingActionButton floatingActionButton;
 
     public NoteFragment() {
         generarData = new GenerarData(1);
@@ -32,6 +36,7 @@ public class NoteFragment extends Fragment {
 
         View vista = inflater.inflate(R.layout.fragment_note, container, false);
         recyclerNotas = vista.findViewById(R.id.recyclerNotas);
+        floatingActionButton = vista.findViewById(R.id.addNota);
 
         recyclerNotas.setLayoutManager(
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
@@ -42,6 +47,12 @@ public class NoteFragment extends Fragment {
 
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
+
+
+        floatingActionButton.setOnClickListener(btn -> {
+            Intent intent = new Intent(getContext(), DetailNoteActivity.class);
+            startActivity(intent);
+        });
 
         return vista;
     }

@@ -5,18 +5,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="8dp"
+    android:layout_margin="5dp"
     card_view:cardCornerRadius="10dp"
     card_view:cardElevation="5dp"
-    card_view:cardUseCompatPadding="true"
-    card_view:cardPreventCornerOverlap="false"
     android:background="@android:color/transparent">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:background="@drawable/bg_note_border"
+        android:background="?attr/cardColor"
         android:padding="16dp"
         android:gravity="center_horizontal">
 
@@ -46,7 +44,6 @@
             android:layout_height="wrap_content"
             app:singleLine="false"
             app:chipSpacingVertical="0dp"
-            app:chipSpacingHorizontal="4dp"
             android:layout_gravity="start" />
 
     </LinearLayout>
