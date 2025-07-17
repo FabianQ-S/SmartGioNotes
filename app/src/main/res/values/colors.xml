@@ -20,7 +20,8 @@
 
     <color name="alternateColor">#000</color>
 
-    <color name="startGradient">#673ab7</color> <!-- Purple -->
-    <color name="endGradient">#ff7000</color> <!-- Orange -->
+    <color name="startGradient">#00f3ff</color> <!-- Inicio degradado celeste -->
+    <color name="endGradient">#0042ff</color> <!-- drgradado celeste -->
+
 
 </resources>

@@ -1,21 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
-    <color name="whiteSecondary">#EDEBEB</color>
-    <color name="red">#FF0000</color>
-    <color name="gray">#5D5D5D</color>
-    <color name="purple">#673ab7</color>
-    <color name="blue">#0042ff</color>
-    <color name="orange">#ff7000</color>
-    <color name="cian">#00f3ff</color>
-
-    <color name="primary">#2f73ab</color>
-    <color name="primaryDark">#1a5789</color>
-
-    <color name="textSecondary">#6E6E73</color>
-    <color name="accent">#FFB84C</color>
-
-    <color name="toolbarTitleBackground">?attr/boxBackgroundColor</color>
-    <color name="alternateColor">#fff</color>
+    <!-- Gradient modo oscuro -->
+    <color name="startGradient">#673ab7</color>
+    <color name="endGradient">#ff7000</color>
 </resources>
+

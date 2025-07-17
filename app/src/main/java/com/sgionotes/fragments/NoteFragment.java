@@ -4,12 +4,14 @@ import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.recyclerview.widget.StaggeredGridLayoutManager;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.content.res.ColorStateList;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.sgionotes.R;
@@ -37,6 +39,9 @@ public class NoteFragment extends Fragment {
         View vista = inflater.inflate(R.layout.fragment_note, container, false);
         recyclerNotas = vista.findViewById(R.id.recyclerNotas);
         floatingActionButton = vista.findViewById(R.id.addNota);
+        // Tint the FAB icon with the theme-based gradient start color
+        int fabTint = ContextCompat.getColor(getContext(), R.color.startGradient);
+        floatingActionButton.setImageTintList(ColorStateList.valueOf(fabTint));
 
         recyclerNotas.setLayoutManager(
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
