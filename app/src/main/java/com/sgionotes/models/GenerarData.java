@@ -20,14 +20,6 @@ public class GenerarData {
             Tag tagUrgente = new Tag("Urgente");
 
             listaNotas.add(new Note(
-                    "Reunión con cliente",
-                    "No olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.No olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\nNo olvidar preparar la presentación y enviarla por correo antes del viernes.\n",
-                    Arrays.asList(tagTrabajo, tagUrgente, tagIdeas),
-                    true
-            ));
-
-
-            listaNotas.add(new Note(
                     "Lista de compras",
                     "Leche, pan, huevos, arroz, pollo, verduras y frutas.",
                     Arrays.asList(tagPersonal),

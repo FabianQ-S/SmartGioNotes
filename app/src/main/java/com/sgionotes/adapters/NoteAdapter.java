@@ -23,6 +23,16 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
     private Context context;
     private List<Note> listaNotas;
 
+    private OnItemClickListener listener;
+
+    public void setOnItemClickListener(OnItemClickListener listener) {
+        this.listener = listener;
+    }
+
+    public interface OnItemClickListener {
+        void onItemClick(Note nota);
+    }
+
     public NoteAdapter(Context context, List<Note> listaNotas) {
         this.context = context;
         this.listaNotas = listaNotas;
@@ -53,6 +63,12 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
             chip.setText(tag.getEtiquetaDescripcion());
             holder.chipGroup.addView(chip);
         }
+
+        holder.itemView.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onItemClick(nota);
+            }
+        });
 
     }
 

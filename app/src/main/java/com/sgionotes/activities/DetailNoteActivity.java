@@ -1,7 +1,9 @@
 package com.sgionotes.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.widget.EditText;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -13,6 +15,9 @@ import androidx.core.view.WindowInsetsCompat;
 import com.sgionotes.R;
 
 public class DetailNoteActivity extends AppCompatActivity {
+
+    EditText etTitulo;
+    EditText etContenido;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,6 +31,18 @@ public class DetailNoteActivity extends AppCompatActivity {
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowTitleEnabled(false);
+        }
+
+        etTitulo = findViewById(R.id.etTitulo);
+        etContenido = findViewById(R.id.etmDetalleNota);
+
+        Intent intent = getIntent();
+        if (intent != null) {
+            String titulo = intent.getStringExtra("titulo");
+            String contenido = intent.getStringExtra("contenido");
+
+            etTitulo.setText(titulo);
+            etContenido.setText(contenido);
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detailNote), (v, insets) -> {

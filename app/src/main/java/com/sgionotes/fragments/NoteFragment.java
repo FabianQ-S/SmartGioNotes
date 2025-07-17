@@ -48,6 +48,12 @@ public class NoteFragment extends Fragment {
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
 
+        notaAdapter.setOnItemClickListener(nota -> {
+            Intent intent = new Intent(getContext(), DetailNoteActivity.class);
+            intent.putExtra("titulo", nota.getTitulo());
+            intent.putExtra("contenido", nota.getContenido());
+            startActivity(intent);
+        });
 
         floatingActionButton.setOnClickListener(btn -> {
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
