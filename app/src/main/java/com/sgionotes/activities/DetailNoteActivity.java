@@ -75,12 +75,38 @@ public class DetailNoteActivity extends AppCompatActivity {
     }
 
     @Override
+    public void onBackPressed() {
+        devolverSiEsNuevo();
+        super.onBackPressed();
+    }
+
+    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
+            devolverSiEsNuevo();
             finish();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void devolverSiEsNuevo() {
+        Intent intent = getIntent();
+        boolean esNueva = intent.getBooleanExtra("esNueva", false);
+
+        if (esNueva) {
+            String titulo = etTitulo.getText().toString().trim();
+            String contenido = etContenido.getText().toString().trim();
+
+            if (!titulo.isEmpty() || !contenido.isEmpty()) {
+                Intent data = new Intent();
+                data.putExtra("titulo", titulo);
+                data.putExtra("contenido", contenido);
+                setResult(RESULT_OK, data);
+            } else {
+                setResult(RESULT_CANCELED);
+            }
+        }
     }
 
 }

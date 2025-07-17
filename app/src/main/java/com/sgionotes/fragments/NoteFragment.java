@@ -1,8 +1,11 @@
 package com.sgionotes.fragments;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
@@ -19,6 +22,8 @@ import com.sgionotes.activities.DetailNoteActivity;
 import com.sgionotes.adapters.NoteAdapter;
 import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Note;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class NoteFragment extends Fragment {
@@ -27,10 +32,38 @@ public class NoteFragment extends Fragment {
     private RecyclerView recyclerNotas;
     private NoteAdapter notaAdapter;
     private List<Note> listaNotas;
+
+    String titulo;
+    String contenido;
     FloatingActionButton floatingActionButton;
 
     public NoteFragment() {
         generarData = new GenerarData(1);
+        listaNotas = generarData.getListaNotas();
+    }
+
+    private ActivityResultLauncher<Intent> launchNewNoteActivity;
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        launchNewNoteActivity = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        titulo = result.getData().getStringExtra("titulo");
+                        contenido = result.getData().getStringExtra("contenido");
+
+                        if (!titulo.isEmpty() || !contenido.isEmpty()) {
+                            Note nuevaNota = new Note(titulo, contenido, new ArrayList<>(), true);
+                            listaNotas.add(0, nuevaNota);
+                            notaAdapter.notifyItemInserted(0);
+                            recyclerNotas.scrollToPosition(0);
+                        }
+                    }
+                }
+        );
     }
 
     @Override
@@ -44,9 +77,6 @@ public class NoteFragment extends Fragment {
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
         );
 
-        // Data estatica
-        listaNotas = generarData.getListaNotas();
-
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
 
@@ -59,7 +89,8 @@ public class NoteFragment extends Fragment {
 
         floatingActionButton.setOnClickListener(btn -> {
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
-            startActivity(intent);
+            intent.putExtra("esNueva", true);
+            launchNewNoteActivity.launch(intent);
         });
 
         return vista;
