@@ -39,9 +39,6 @@ public class NoteFragment extends Fragment {
         View vista = inflater.inflate(R.layout.fragment_note, container, false);
         recyclerNotas = vista.findViewById(R.id.recyclerNotas);
         floatingActionButton = vista.findViewById(R.id.addNota);
-        // Tint the FAB icon with the theme-based gradient start color
-        int fabTint = ContextCompat.getColor(getContext(), R.color.startGradient);
-        floatingActionButton.setImageTintList(ColorStateList.valueOf(fabTint));
 
         recyclerNotas.setLayoutManager(
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)

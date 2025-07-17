@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Gradient modo oscuro -->
-    <color name="startGradient">#673ab7</color>
-    <color name="endGradient">#ff7000</color>
+    <color name="startGradient">#673ab7</color> <!-- Purple -->
+    <color name="endGradient">#ff7000</color> <!-- Orange -->
 </resources>
-

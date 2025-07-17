@@ -20,8 +20,8 @@
 
     <color name="alternateColor">#000</color>
 
-    <color name="startGradient">#00f3ff</color> <!-- Inicio degradado celeste -->
-    <color name="endGradient">#0042ff</color> <!-- drgradado celeste -->
+    <color name="startGradient">#00f3ff</color> <!-- Inicio degradado celeste claro -->
+    <color name="endGradient">#0042ff</color> <!-- Fin degradado celeste claro -->
 
 
 </resources>
