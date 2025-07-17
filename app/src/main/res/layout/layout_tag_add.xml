@@ -36,9 +36,12 @@
             android:background="@android:color/transparent"
             style="@style/TEXT"
             android:textSize="16sp"
-            tools:ignore="LabelFor" />
+            tools:ignore="LabelFor"
+            android:imeOptions="actionSend"
+            android:inputType="text"/>
 
         <ImageView
+            android:id="@+id/btnAddTag"
             android:layout_width="30dp"
             android:layout_height="30dp"
             android:src="@drawable/outline_add_24"
