@@ -3,7 +3,9 @@ package com.sgionotes.activities;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
@@ -40,9 +42,24 @@ public class DetailNoteActivity extends AppCompatActivity {
         if (intent != null) {
             String titulo = intent.getStringExtra("titulo");
             String contenido = intent.getStringExtra("contenido");
+            boolean desdePapelera = intent.getBooleanExtra("desdePapelera", false);
 
             etTitulo.setText(titulo);
             etContenido.setText(contenido);
+
+            if (desdePapelera) {
+                etTitulo.setFocusable(false);
+                etTitulo.setClickable(true);
+                etContenido.setFocusable(false);
+                etContenido.setClickable(true);
+
+                View.OnClickListener mostrarMensaje = v -> {
+                    Toast.makeText(this, "No es posible editar notas desde la papelera", Toast.LENGTH_LONG).show();
+                };
+
+                etTitulo.setOnClickListener(mostrarMensaje);
+                etContenido.setOnClickListener(mostrarMensaje);
+            }
         }
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detailNote), (v, insets) -> {

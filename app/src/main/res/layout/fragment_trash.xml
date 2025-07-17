@@ -1,18 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/trashFragmentLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".fragments.TrashFragment">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerTrashNotes"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center"
-        android:textColor="@color/textSecondary"
-        android:textSize="30sp"
-        android:text="Papelera Proximamente..."
-        />
+        android:padding="3dp"
+        android:clipToPadding="false" />
+
+    <Button
+        android:id="@+id/btnVaciarPapelera"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Vaciar Papelera"
+        android:layout_gravity="bottom"
+        android:textStyle="bold"
+        android:textSize="15sp"
+        android:backgroundTint="#B30A0A"
+        android:textColor="@android:color/white"
+        android:layout_margin="18dp" />
 
 </FrameLayout>

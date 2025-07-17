@@ -242,6 +242,35 @@ public class GenerarData {
             listaEtiquetas.add(new Tag("Clase"));
             listaEtiquetas.add(new Tag("Pendientes"));
         }
+        else if (n == 3) {
+            listaNotas = new ArrayList<>();
+
+            Tag tagTrabajo = new Tag("Trabajo");
+            Tag tagPersonal = new Tag("Personal");
+            Tag tagImportante = new Tag("Importante");
+            Tag tagIdeas = new Tag("Ideas");
+
+            listaNotas.add(new Note(
+                    "Idea para proyecto",
+                    "Crear una aplicación móvil para organizar tareas mediante inteligencia artificial.",
+                    Arrays.asList(tagIdeas, tagImportante),
+                    true
+            ));
+
+            listaNotas.add(new Note(
+                    "Cita médica",
+                    "Cita con el doctor Ramírez el lunes 12 a las 9:00 a.m.",
+                    Arrays.asList(tagPersonal, tagImportante),
+                    false
+            ));
+
+            listaNotas.add(new Note(
+                    "Plan de marketing",
+                    "Definir objetivos trimestrales, estudiar la competencia y proponer campañas.",
+                    Arrays.asList(tagTrabajo),
+                    true
+            ));
+        }
     }
 
     public List<Note> getListaNotas() {
