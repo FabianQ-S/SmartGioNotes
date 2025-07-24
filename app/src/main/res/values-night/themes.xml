@@ -1,5 +1,5 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
+    <!-- ThemaBaseDeLaApp -->
     <style name="Base.Theme.Sgionotes" parent="Theme.Material3.DayNight.NoActionBar">
 
         <item name="colorPrimary">@color/primary</item>
@@ -17,6 +17,13 @@
 
         <item name="colorCardBorder">@color/white</item>
         <item name="cardColor">#333333</item>
+
+        <!-- AtributosPopupMenu -->
+        <item name="chipBackgroundColor">@color/chipBackgroundColor</item>
+        <item name="chipStrokeColor">@color/chipStrokeColor</item>
+        <item name="popupMenuBackgroundColor">@color/popupMenuBackgroundColor</item>
+        <item name="popupMenuStrokeColor">@color/popupMenuStrokeColor</item>
+        <item name="textColor">@android:color/white</item>
 
     </style>
 

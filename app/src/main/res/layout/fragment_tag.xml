@@ -6,25 +6,7 @@
     android:layout_height="match_parent"
     tools:context=".fragments.TagFragment">
 
-    <View
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="2dp"
-        android:background="?attr/colorControlNormal" />
-
     <include layout="@layout/layout_tag_add" />
-
-    <View
-        android:layout_marginStart="10dp"
-        android:layout_marginEnd="10dp"
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="2dp"
-        android:background="?attr/colorControlNormal" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerTags"
@@ -35,4 +17,3 @@
         android:clipToPadding="false"/>
 
 </LinearLayout>
-

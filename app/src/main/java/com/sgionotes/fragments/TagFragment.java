@@ -41,6 +41,9 @@ public class TagFragment extends Fragment {
         txtTagNew = vista.findViewById(R.id.txtTagNew);
         btnAddTag = vista.findViewById(R.id.btnAddTag);
 
+        // CargaFavoritos
+        GenerarData.getInstance().loadFavorites(getContext());
+
         recyclerTags.setLayoutManager(
                 new LinearLayoutManager(getContext())
         );
@@ -79,4 +82,9 @@ public class TagFragment extends Fragment {
         }
     }
 
+    @Override
+    public void onPause() {
+        super.onPause();
+        GenerarData.getInstance().saveFavorites(getContext());
+    }
 }

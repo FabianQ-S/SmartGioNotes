@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="alternateColor">#fff</color>
-    <!-- Gradient modo oscuro -->
+    <!-- StartEndGradienteOscuro -->
     <color name="startGradient">#673ab7</color>
     <color name="endGradient">#ff7000</color>
 
-    <!-- Color papelera -->
+    <!-- PapeleraColors -->
     <color name="trashButtonColor">@color/startGradient</color>
 
-    <!-- Colores chipsd -->
+    <!-- ChipsColors -->
     <color name="chipBackground">#4A148C</color>
     <color name="chipText">#E1BEE7</color>
+    <color name="chipBackgroundColor">@color/chipBackground</color>
+    <color name="chipStrokeColor">#7B1FA2</color>
+
+    <!-- PopupColors -->
+    <color name="popupMenuBackgroundColor">#3E2723</color>
+    <color name="popupMenuStrokeColor">#5D4037</color>
 </resources>

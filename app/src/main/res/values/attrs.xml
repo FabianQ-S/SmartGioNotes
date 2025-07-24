@@ -1,5 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <attr name="colorCardBorder" format="color" />
-    <attr name="cardColor" format="color"/>
+    <!-- AtributosProyecto -->
+    <attr name="cardColor" format="color|reference" />
+    <attr name="colorCardBorder" format="color|reference" />
+
+    <!-- AtributosChipsPopup -->
+    <attr name="chipBackgroundColor" format="color|reference" />
+    <attr name="chipStrokeColor" format="color|reference" />
+    <attr name="popupMenuBackgroundColor" format="color|reference" />
+    <attr name="popupMenuStrokeColor" format="color|reference" />
+    <attr name="textColor" format="color|reference" />
 </resources>

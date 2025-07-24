@@ -8,7 +8,7 @@
     android:orientation="vertical"
     tools:context=".activities.TagsActivity">
 
-    <!-- Barra superior -->
+    <!-- Barra -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -16,13 +16,12 @@
         android:background="@android:color/transparent"
         app:navigationIcon="?attr/homeAsUpIndicator" />
 
-    <com.google.android.material.chip.ChipGroup
-        android:id="@+id/chipGroup"
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerViewTags"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
-        app:chipSpacing="8dp"
-        app:lineSpacing="8dp" />
+        android:nestedScrollingEnabled="false" />
 
     <View
         android:layout_width="match_parent"

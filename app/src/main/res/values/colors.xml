@@ -20,13 +20,19 @@
 
     <color name="alternateColor">#000</color>
 
-    <color name="startGradient">#00f3ff</color> <!-- I degradado celeste claro -->
-    <color name="endGradient">#0042ff</color> <!-- F degradado celeste claro -->
+    <color name="startGradient">#00f3ff</color> <!-- inicio degradado celeste  -->
+    <color name="endGradient">#0042ff</color> <!-- final degradado celeste  -->
 
-    <!-- vaciar papelera -->
+    <!-- Papelera -->
     <color name="trashButtonColor">@color/cian</color>
 
-    <!-- Colores chips -->
+    <!-- ChipsColors -->
     <color name="chipBackground">#E3F2FD</color>
     <color name="chipText">#1565C0</color>
+    <color name="chipBackgroundColor">@color/chipBackground</color>
+    <color name="chipStrokeColor">#BBDEFB</color>
+
+    <!-- PopupColors -->
+    <color name="popupMenuBackgroundColor">#D1C4E9</color>
+    <color name="popupMenuStrokeColor">#9575CD</color>
 </resources>
