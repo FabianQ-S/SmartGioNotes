@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="80dp"
+    android:layout_height="80dp"
+    android:layout_margin="16dp"
+    android:layout_gravity="center"
+    app:cardCornerRadius="40dp"
+    app:cardElevation="6dp"
+    app:cardBackgroundColor="?attr/colorSecondary"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?android:attr/selectableItemBackgroundBorderless">
+
+    <ImageView
+        android:id="@+id/imgProfileIcon"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerInside"
+        android:padding="3dp"
+        android:layout_gravity="center"
+        app:tint="?attr/colorOnSecondary"
+        android:alpha="1.0" />
+
+</androidx.cardview.widget.CardView>

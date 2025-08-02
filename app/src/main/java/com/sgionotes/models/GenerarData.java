@@ -2,6 +2,7 @@ package com.sgionotes.models;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import com.sgionotes.repository.LocalRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.HashSet;
 public class GenerarData {
 
     private static GenerarData instancia;
+    private LocalRepository localRepository;
     private List<Note> listaNotas;
     private List<Tag> listaEtiquetas;
     private static final String PREFS_NAME = "TagPreferences";
@@ -20,100 +22,163 @@ public class GenerarData {
     private static final String TAG_SEPARATOR = "||TAG_SEPARATOR||";
 
     private GenerarData() {
-
         listaNotas = new ArrayList<>();
         listaEtiquetas = new ArrayList<>();
+    }
 
-        Tag tagTrabajo = new Tag("Trabajo");
-        Tag tagPersonal = new Tag("Personal");
-        Tag tagImportante = new Tag("Importante");
-        Tag tagIdeas = new Tag("Ideas");
-        Tag tagUrgente = new Tag("Urgente");
+    public void initializeWithContext(Context context) {
+        if (localRepository == null) {
+            localRepository = new LocalRepository(context);
+            loadDataFromDatabase();
+            createDefaultDataIfEmpty();
+        }
+    }
 
-        listaEtiquetas.add(tagTrabajo);
-        listaEtiquetas.add(tagPersonal);
-        listaEtiquetas.add(tagImportante);
-        listaEtiquetas.add(tagIdeas);
-        listaEtiquetas.add(tagUrgente);
+    private void loadDataFromDatabase() {
+        if (localRepository != null) {
+            listaNotas = localRepository.getAllNotes();
+            listaEtiquetas = localRepository.getAllTags();
+        }
+    }
 
-        listaNotas.add(new Note(1,
-                "Lista de compras",
-                "Leche, pan, huevos, arroz, pollo, verduras y frutas.",
-                Arrays.asList(tagPersonal),
-                true, false
-        ));
+    private void createDefaultDataIfEmpty() {
+        if (localRepository == null) return;
 
-        listaNotas.add(new Note(2,
-                "Idea para proyecto",
-                "Crear una aplicación móvil para organizar tareas mediante inteligencia artificial.",
-                Arrays.asList(tagIdeas, tagImportante),
-                true, false
-        ));
+        // EtiquetasDefault
+        if (listaEtiquetas.isEmpty()) {
+            Tag tagTrabajo = new Tag("Trabajo");
+            Tag tagPersonal = new Tag("Personal");
+            Tag tagImportante = new Tag("Importante");
+            Tag tagIdeas = new Tag("Ideas");
+            Tag tagUrgente = new Tag("Urgente");
 
-        listaNotas.add(new Note(3,
-                "Cita médica",
-                "Cita con el doctor Ramírez el lunes 12 a las 9:00 a.m.",
-                Arrays.asList(tagPersonal, tagImportante),
-                true, false
-        ));
+            localRepository.saveTag(tagTrabajo);
+            localRepository.saveTag(tagPersonal);
+            localRepository.saveTag(tagImportante);
+            localRepository.saveTag(tagIdeas);
+            localRepository.saveTag(tagUrgente);
 
-        listaNotas.add(new Note(4,
-                "Plan de marketing",
-                "Definir objetivos trimestrales, estudiar la competencia y proponer campañas.",
-                Arrays.asList(tagTrabajo),
-                true, false
-        ));
+            listaEtiquetas = localRepository.getAllTags();
+        }
 
-        listaNotas.add(new Note(5,
-                "Reunión con cliente",
-                "No olvidar preparar la presentación y enviarla por correo antes del viernes.",
-                Arrays.asList(tagTrabajo, tagUrgente),
-                true, false
-        ));
+        // NotasDefault
+        if (listaNotas.isEmpty()) {
+            Tag tagPersonal = getTagByDescription("Personal");
+            Tag tagIdeas = getTagByDescription("Ideas");
+            Tag tagImportante = getTagByDescription("Importante");
+            Tag tagTrabajo = getTagByDescription("Trabajo");
+            Tag tagUrgente = getTagByDescription("Urgente");
 
-        listaNotas.add(new Note(6,
-                "Lista de compras",
-                "Leche, pan, huevos, arroz, pollo, verduras y frutas.",
-                Arrays.asList(tagPersonal),
-                true, true
-        ));
-        listaNotas.add(new Note(7,
-                "Idea para proyecto",
-                "Crear una aplicación móvil para organizar tareas mediante inteligencia artificial.",
-                Arrays.asList(tagIdeas, tagImportante),
-                true, false
-        ));
+            Note nota1 = new Note(0,
+                    "Lista de compras",
+                    "Leche, pan, huevos, arroz, pollo, verduras y frutas.",
+                    Arrays.asList(tagPersonal),
+                    true, false
+            );
 
-        listaNotas.add(new Note(8,
-                "Cita médica",
-                "Cita con el doctor Ramírez el lunes 12 a las 9:00 a.m.",
-                Arrays.asList(tagPersonal, tagImportante),
-                true, true
-        ));
+            Note nota2 = new Note(0,
+                    "Idea para proyecto",
+                    "Crear una aplicación móvil para organizar tareas mediante inteligencia artificial.",
+                    Arrays.asList(tagIdeas, tagImportante),
+                    true, false
+            );
 
-        listaNotas.add(new Note(9,
-                "Plan de marketing",
-                "Definir objetivos trimestrales, estudiar la competencia y proponer campañas.",
-                Arrays.asList(tagTrabajo),
-                true, true
-        ));
+            Note nota3 = new Note(0,
+                    "Cita médica",
+                    "Cita con el doctor Ramírez el lunes 12 a las 9:00 a.m.",
+                    Arrays.asList(tagPersonal, tagImportante),
+                    true, false
+            );
 
+            localRepository.saveNote(nota1);
+            localRepository.saveNote(nota2);
+            localRepository.saveNote(nota3);
+
+            listaNotas = localRepository.getAllNotes();
+        }
+    }
+
+    private Tag getTagByDescription(String description) {
+        for (Tag tag : listaEtiquetas) {
+            if (tag.getEtiquetaDescripcion().equals(description)) {
+                return tag;
+            }
+        }
+        return new Tag(description);
     }
 
     public List<Note> getListaNotas() {
+        if (localRepository != null) {
+            listaNotas = localRepository.getAllNotes();
+        }
         return listaNotas;
     }
 
     public void setListaNotas(List<Note> listaNotas) {
         this.listaNotas = listaNotas;
+        // Guardar en SQLite
+        if (localRepository != null) {
+            for (Note note : listaNotas) {
+                localRepository.saveNote(note);
+            }
+        }
     }
 
     public List<Tag> getListaEtiquetas() {
+        if (localRepository != null) {
+            listaEtiquetas = localRepository.getAllTags();
+        }
         return listaEtiquetas;
     }
 
     public void setListaEtiquetas(List<Tag> listaEtiquetas) {
         this.listaEtiquetas = listaEtiquetas;
+        // Guardar en SQLite
+        if (localRepository != null) {
+            for (Tag tag : listaEtiquetas) {
+                localRepository.saveTag(tag);
+            }
+        }
+    }
+
+    // Métodos para operaciones directas con SQLite
+    public void addNote(Note note) {
+        if (localRepository != null) {
+            localRepository.saveNote(note);
+            listaNotas = localRepository.getAllNotes();
+        }
+    }
+
+    public void updateNote(Note note) {
+        if (localRepository != null) {
+            localRepository.saveNote(note);
+            listaNotas = localRepository.getAllNotes();
+        }
+    }
+
+    public void deleteNote(int noteId) {
+        if (localRepository != null) {
+            localRepository.deleteNote(noteId);
+            listaNotas = localRepository.getAllNotes();
+        }
+    }
+
+    public void moveNoteToTrash(int noteId) {
+        if (localRepository != null) {
+            localRepository.moveNoteToTrash(noteId);
+            listaNotas = localRepository.getAllNotes();
+        }
+    }
+
+    public void addTag(Tag tag) {
+        if (localRepository != null) {
+            localRepository.saveTag(tag);
+            listaEtiquetas = localRepository.getAllTags();
+        }
+    }
+
+    public LocalRepository getLocalRepository() {
+        return localRepository;
     }
 
     public static GenerarData getInstance() {
@@ -123,10 +188,17 @@ public class GenerarData {
         return instancia;
     }
 
+    public static GenerarData getInstancia() {
+        if (instancia == null) {
+            instancia = new GenerarData();
+        }
+        return instancia;
+    }
+
     public void loadFavorites(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> favorites = prefs.getStringSet(FAVORITES_KEY, new HashSet<>());
-
+        
         for (Tag tag : listaEtiquetas) {
             String tagKey = tag.getEtiquetaDescripcion();
             if (favorites.contains(tagKey)) {
@@ -135,7 +207,7 @@ public class GenerarData {
                 tag.setFavoriteTimestamp(timestamp);
             }
         }
-
+        
         sortTagsByFavorites();
     }
 
@@ -169,6 +241,4 @@ public class GenerarData {
         editor.putStringSet(FAVORITES_KEY, favorites);
         editor.apply();
     }
-
-
 }

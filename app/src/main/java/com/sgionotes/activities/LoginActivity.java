@@ -2,6 +2,7 @@ package com.sgionotes.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
@@ -14,7 +15,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.sgionotes.R;
+import com.sgionotes.repository.FirestoreRepository;
+import com.sgionotes.models.GenerarData;
 
 public class LoginActivity extends AppCompatActivity {
 
@@ -24,8 +29,8 @@ public class LoginActivity extends AppCompatActivity {
     private EditText txtPassword;
     private LinearLayout loginMain;
 
-    private String email;
-    private String password;
+    private FirebaseAuth mAuth;
+    private FirestoreRepository firestoreRepository;
     boolean registroExitoso;
 
     @Override
@@ -34,8 +39,10 @@ public class LoginActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
 
-        email = "pepito@gmail.com";
-        password = "123456";
+        // InicializarFirebaseAuth
+        mAuth = FirebaseAuth.getInstance();
+        firestoreRepository = new FirestoreRepository(this);
+
         registroExitoso = getIntent().getBooleanExtra("registro_exitoso", false);
 
         txtEmail = findViewById(R.id.txtEmail);
@@ -48,17 +55,22 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         btnLogin.setOnClickListener(btn -> {
+            String email = txtEmail.getText().toString().trim();
+            String password = txtPassword.getText().toString().trim();
 
-            if (validateLogin()) {
-                Intent intent = new Intent(LoginActivity.this, MainActivity.class);
-                startActivity(intent);
-                finish();
+            if (email.isEmpty() || password.isEmpty()) {
+                Snackbar.make(loginMain, "Completa los campos para acceder", Snackbar.LENGTH_LONG).show();
+                return;
             }
 
+            //Loanding
+            btnLogin.setEnabled(false);
+            btnLogin.setText("Iniciando sesión...");
+
+            loginWithFirebase(email, password);
         });
 
         registerRedirect = findViewById(R.id.registerRedirect);
-
         registerRedirect.setOnClickListener(reg -> {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
             startActivity(intent);
@@ -72,21 +84,55 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
-    private boolean validateLogin() {
+    private void loginWithFirebase(String email, String password) {
+        mAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Login
+                        FirebaseUser user = mAuth.getCurrentUser();
+                        Snackbar.make(loginMain, "Bienvenido " + user.getEmail(), Snackbar.LENGTH_SHORT).show();
+                        loadUserDataAndNavigate();
+                    } else {
+                        // LoginFallido
+                        Snackbar.make(loginMain, "Usuario y/o contraseña inválidos", Snackbar.LENGTH_SHORT).show();
+                        btnLogin.setEnabled(true);
+                        btnLogin.setText("Iniciar Sesión");
+                    }
+                });
+    }
 
-        if (txtEmail.getText().toString().isEmpty() ||
-                txtPassword.getText().toString().isEmpty()) {
-            Snackbar.make(loginMain, "Completa los campos para acceder", Snackbar.LENGTH_LONG).show();
-            return false;
-        }
-        else if (txtEmail.getText().toString().equals(email) &&
-                txtPassword.getText().toString().equals(password)) {
-            return true;
-        }
-        else {
-            Snackbar.make(loginMain, "Usuario y/o contraseña inválidos", Snackbar.LENGTH_SHORT).show();
-            return false;
-        }
+    private void loadUserDataAndNavigate() {
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.initializeWithContext(this);
 
+        // FirestoneBackupRestore
+        firestoreRepository.restoreDataFromFirestore(new FirestoreRepository.DataSyncCallback() {
+            @Override
+            public void onSuccess() {
+                navigateToMainActivity();
+            }
+
+            @Override
+            public void onError(String error) {
+                Log.d("LoginActivity", "No se pudieron restaurar datos desde Firestore, usando datos locales: " + error);
+                navigateToMainActivity();
+            }
+        });
+    }
+
+    private void navigateToMainActivity() {
+        Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+        startActivity(intent);
+        finish();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        //UsuarioActual
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            loadUserDataAndNavigate();
+        }
     }
 }

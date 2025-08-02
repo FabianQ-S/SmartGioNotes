@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
@@ -16,12 +18,19 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
+
 import com.google.android.material.navigation.NavigationView;
+import com.google.firebase.auth.FirebaseAuth;
 import com.sgionotes.R;
+import com.sgionotes.dialogs.ProfileIconDialog;
 import com.sgionotes.fragments.NoteFragment;
 import com.sgionotes.fragments.NotePrivateFragment;
 import com.sgionotes.fragments.TagFragment;
 import com.sgionotes.fragments.TrashFragment;
+import com.sgionotes.models.GenerarData;
+import com.sgionotes.models.UserProfile;
+import com.sgionotes.repository.FirestoreRepository;
+import com.sgionotes.utils.UserProfileManager;
 
 import java.util.Objects;
 
@@ -30,6 +39,10 @@ public class MainActivity extends AppCompatActivity {
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private ActionBarDrawerToggle toggle;
+    private FirebaseAuth mAuth;
+    private FirestoreRepository firestoreRepository;
+    private Handler saveHandler;
+    private Runnable saveRunnable;
 
     private NoteFragment notes = new NoteFragment();
     private TagFragment tags = new TagFragment();
@@ -41,6 +54,16 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
+
+        // FirebaseRepository y Firebase Auth
+        mAuth = FirebaseAuth.getInstance();
+        firestoreRepository = new FirestoreRepository(this);
+
+        // GenerarData Sqlite
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.initializeWithContext(this);
+
+        setupAutoSave();
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -73,9 +96,7 @@ public class MainActivity extends AppCompatActivity {
                     loadFragment(trash);
                 }
                 else if (id == R.id.btnLogout) {
-                    Intent intent = new Intent(this, LoginActivity.class);
-                    startActivity(intent);
-                    finish();
+                    logoutUser();
                 }
 //                else if (id == R.id.tags_private) {
 //                    loadFragment(tagsPrivate);
@@ -84,12 +105,52 @@ public class MainActivity extends AppCompatActivity {
 
             return true;
         });
+        setupUserProfile();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+    private void setupAutoSave() {
+        saveHandler = new Handler(Looper.getMainLooper());
+        saveRunnable = new Runnable() {
+            @Override
+            public void run() {
+                saveUserDataToFirestore();
+                saveHandler.postDelayed(this, 30000);
+            }
+        };
+        saveHandler.postDelayed(saveRunnable, 30000);
+    }
+
+    private void saveUserDataToFirestore() {
+        if (mAuth.getCurrentUser() != null) {
+            //SqliteBackup
+            firestoreRepository.backupLocalDataToFirestore(new FirestoreRepository.DataSyncCallback() {
+                @Override
+                public void onSuccess() {
+
+                }
+
+                @Override
+                public void onError(String error) {
+                }
+            });
+        }
+    }
+
+    private void logoutUser() {
+        // SessionOff
+        saveUserDataToFirestore();
+        mAuth.signOut();
+
+        // LoginActivity
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     public void loadFragment(Fragment fragment) {
@@ -99,4 +160,69 @@ public class MainActivity extends AppCompatActivity {
                 .commit();
     }
 
+    @Override
+    protected void onPause() {
+        super.onPause();
+        // GuardarAlSuspederSesion
+        saveUserDataToFirestore();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (saveHandler != null && saveRunnable != null) {
+            saveHandler.removeCallbacks(saveRunnable);
+        }
+        saveUserDataToFirestore();
+    }
+
+    private void setupUserProfile() {
+        View headerView = navigationView.getHeaderView(0);
+        ImageView imgProfileIcon = headerView.findViewById(R.id.imgProfileIcon);
+        ImageView imgEditIcon = headerView.findViewById(R.id.imgEditIcon);
+        TextView txtUserName = headerView.findViewById(R.id.txtUserName);
+        TextView txtUserEmail = headerView.findViewById(R.id.txtUserEmail);
+
+        loadUserProfile(imgProfileIcon, txtUserName, txtUserEmail);
+
+        imgProfileIcon.setOnClickListener(v -> {
+            imgEditIcon.setVisibility(View.VISIBLE);
+
+            // Ocultar automáticamente
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                imgEditIcon.setVisibility(View.GONE);
+            }, 2000);
+        });
+
+        // Editar
+        imgEditIcon.setOnClickListener(v -> showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
+        headerView.findViewById(R.id.cardProfileIcon).setOnClickListener(v ->
+                showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
+    }
+
+    private void loadUserProfile(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
+        UserProfileManager profileManager = new UserProfileManager(this);
+        UserProfile profile = profileManager.getUserProfile();
+        imgProfileIcon.setImageResource(profile.getProfileIcon());
+        txtUserName.setText(profile.getFullName());
+
+        // Si el email está vacío, intentar obtenerlo de Firebase
+        String email = profile.getEmail();
+        if (email.isEmpty() && mAuth.getCurrentUser() != null) {
+            email = mAuth.getCurrentUser().getEmail();
+            profile.setEmail(email);
+            profileManager.saveUserProfile(profile);
+        }
+        txtUserEmail.setText(email);
+    }
+
+    private void showProfileIconDialog(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
+        ProfileIconDialog.showIconSelectionDialog(this, selectedIcon -> {
+            UserProfileManager profileManager = new UserProfileManager(this);
+            UserProfile profile = profileManager.getUserProfile();
+            profile.setProfileIcon(selectedIcon);
+            profileManager.saveUserProfile(profile);
+            imgProfileIcon.setImageResource(selectedIcon);
+        });
+    }
 }

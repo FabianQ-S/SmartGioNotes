@@ -2,12 +2,9 @@ package com.sgionotes.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
@@ -17,7 +14,10 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.google.firebase.auth.FirebaseAuth;
 import com.sgionotes.R;
+import com.sgionotes.models.UserProfile;
+import com.sgionotes.utils.UserProfileManager;
 
 import java.util.regex.Pattern;
 
@@ -30,6 +30,7 @@ public class RegisterActivity extends AppCompatActivity {
     private EditText txtPassword;
     private LinearLayout registerMain;
     private Button btnRegister;
+    private FirebaseAuth mAuth;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,6 +38,8 @@ public class RegisterActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_register);
 
+        // InicializarFirebase
+        mAuth = FirebaseAuth.getInstance();
 
         txtNombres = findViewById(R.id.txtNombres);
         txtApellidos = findViewById(R.id.txtApellidos);
@@ -54,10 +57,14 @@ public class RegisterActivity extends AppCompatActivity {
 
         btnRegister.setOnClickListener(btn -> {
             if (validacionRegister()) {
-                Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
-                intent.putExtra("registro_exitoso", true);
-                startActivity(intent);
-                finish();
+                // Mostrar loading
+                btnRegister.setEnabled(false);
+                btnRegister.setText("Creando cuenta...");
+
+                String email = txtCorreo.getText().toString().trim();
+                String password = txtPassword.getText().toString();
+
+                registerWithFirebase(email, password);
             }
         });
 
@@ -66,6 +73,45 @@ public class RegisterActivity extends AppCompatActivity {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
+    }
+
+    private void registerWithFirebase(String email, String password) {
+        mAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        saveUserProfile();
+
+                        Snackbar.make(registerMain, "Cuenta creada exitosamente", Snackbar.LENGTH_SHORT).show();
+                        Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
+                        intent.putExtra("registro_exitoso", true);
+                        startActivity(intent);
+                        finish();
+                    } else {
+                        // Breackpoint
+                        String errorMessage = "Error al crear la cuenta";
+                        if (task.getException() != null) {
+                            String exception = task.getException().getMessage();
+                            if (exception.contains("email address is already in use")) {
+                                errorMessage = "Este correo ya está registrado";
+                            } else if (exception.contains("weak password")) {
+                                errorMessage = "La contraseña es muy débil";
+                            }
+                        }
+                        Snackbar.make(registerMain, errorMessage, Snackbar.LENGTH_LONG).show();
+                        btnRegister.setEnabled(true);
+                        btnRegister.setText("Registrarse");
+                    }
+                });
+    }
+
+    private void saveUserProfile() {
+        UserProfileManager profileManager = new UserProfileManager(this);
+
+        String nombres = txtNombres.getText().toString().trim();
+        String apellidos = txtApellidos.getText().toString().trim();
+        String email = txtCorreo.getText().toString().trim();
+        UserProfile profile = new UserProfile(nombres, apellidos, email, R.drawable.ic_person_24);
+        profileManager.saveUserProfile(profile);
     }
 
     private boolean validacionRegister() {

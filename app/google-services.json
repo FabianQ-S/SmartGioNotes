@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "220434650266",
+    "project_id": "smartgionotes",
+    "storage_bucket": "smartgionotes.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:220434650266:android:3e905231d3f01157413b23",
+        "android_client_info": {
+          "package_name": "com.sgionotes"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBFhH67trcWwVz-sZqOG6Y96GwM3sOriow"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

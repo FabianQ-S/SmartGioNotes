@@ -36,8 +36,8 @@ public class Tag {
         return favoriteTimestamp;
     }
 
-    public void setFavoriteTimestamp(long timestamp) {
-        this.favoriteTimestamp = timestamp;
+    public void setFavoriteTimestamp(long favoriteTimestamp) {
+        this.favoriteTimestamp = favoriteTimestamp;
     }
 
     public String getDisplayText() {
