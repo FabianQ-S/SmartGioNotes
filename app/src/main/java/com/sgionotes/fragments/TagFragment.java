@@ -69,14 +69,28 @@ public class TagFragment extends Fragment {
         String texto = txtTagNew.getText().toString().trim();
         if (!texto.isEmpty()) {
             Tag nueva = new Tag(texto);
-            listaEtiquetas.add(0, nueva);
-            tagAdapter.notifyItemInserted(0);
-            recyclerTags.scrollToPosition(0);
-            txtTagNew.setText("");
 
-            txtTagNew.clearFocus();
-            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(txtTagNew.getWindowToken(), 0);
+            // Guardar primero en Firestore
+            GenerarData.getInstance().getFirestoreRepository()
+                    .saveTag(nueva, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                        @Override
+                        public void onSuccess() {
+                            // Solo agregar a la lista local si se guardó exitosamente en Firestore
+                            listaEtiquetas.add(0, nueva);
+                            tagAdapter.notifyItemInserted(0);
+                            recyclerTags.scrollToPosition(0);
+                            txtTagNew.setText("");
+
+                            txtTagNew.clearFocus();
+                            InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                            imm.hideSoftInputFromWindow(txtTagNew.getWindowToken(), 0);
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Snackbar.make(recyclerTags, "Error al guardar etiqueta: " + error, Snackbar.LENGTH_SHORT).show();
+                        }
+                    });
         } else {
             Snackbar.make(recyclerTags, "La etiqueta no puede estar vacía", Snackbar.LENGTH_SHORT).show();
         }

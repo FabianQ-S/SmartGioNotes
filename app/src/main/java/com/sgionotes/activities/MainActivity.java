@@ -55,16 +55,14 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
 
-        // FirebaseRepository y Firebase Auth
+        // FirebaseRepository
         mAuth = FirebaseAuth.getInstance();
         firestoreRepository = new FirestoreRepository(this);
 
-        // GenerarData Sqlite
+        // GenerarDataSqlite
         GenerarData generarData = GenerarData.getInstancia();
         generarData.initializeWithContext(this);
-
         setupAutoSave();
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
@@ -114,36 +112,23 @@ public class MainActivity extends AppCompatActivity {
         });
     }
     private void setupAutoSave() {
-        saveHandler = new Handler(Looper.getMainLooper());
-        saveRunnable = new Runnable() {
-            @Override
-            public void run() {
-                saveUserDataToFirestore();
-                saveHandler.postDelayed(this, 30000);
-            }
-        };
-        saveHandler.postDelayed(saveRunnable, 30000);
+        // Ya no necesitamos auto-guardado manual porque Firestore maneja la persistencia automáticamente
+        // El código se mantiene para compatibilidad pero no hace nada
     }
 
-    private void saveUserDataToFirestore() {
-        if (mAuth.getCurrentUser() != null) {
-            //SqliteBackup
-            firestoreRepository.backupLocalDataToFirestore(new FirestoreRepository.DataSyncCallback() {
-                @Override
-                public void onSuccess() {
-
-                }
-
-                @Override
-                public void onError(String error) {
-                }
-            });
+    private void saveUserDataToFirestore(Runnable onComplete) {
+        // Ya no necesitamos guardar manualmente porque Firestore maneja la persistencia
+        if (onComplete != null) {
+            onComplete.run();
         }
     }
 
+    private void saveUserDataToFirestore() {
+        // Método mantenido para compatibilidad
+    }
+
     private void logoutUser() {
-        // SessionOff
-        saveUserDataToFirestore();
+        // SessionOff - Ya no necesitamos guardar manualmente
         mAuth.signOut();
 
         // LoginActivity
@@ -188,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
         imgProfileIcon.setOnClickListener(v -> {
             imgEditIcon.setVisibility(View.VISIBLE);
 
-            // Ocultar automáticamente
+            // OcultarAutomáticamente
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 imgEditIcon.setVisibility(View.GONE);
             }, 2000);
@@ -205,9 +190,8 @@ public class MainActivity extends AppCompatActivity {
         UserProfile profile = profileManager.getUserProfile();
         imgProfileIcon.setImageResource(profile.getProfileIcon());
         txtUserName.setText(profile.getFullName());
-
-        // Si el email está vacío, intentar obtenerlo de Firebase
         String email = profile.getEmail();
+
         if (email.isEmpty() && mAuth.getCurrentUser() != null) {
             email = mAuth.getCurrentUser().getEmail();
             profile.setEmail(email);

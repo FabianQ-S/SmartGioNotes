@@ -157,16 +157,29 @@ public class DetailNoteActivity extends AppCompatActivity {
     private void guardarCambios() {
         String id = txtIdNotaDetailNote.getText().toString().trim();
         if (!id.isEmpty()) {
-            int idNota = Integer.parseInt(id);
+            String idNota = id;
             String titulo = etTitulo.getText().toString().trim();
             String contenido = etContenido.getText().toString().trim();
-
             GenerarData.getInstance()
                     .getListaNotas().stream()
-                    .filter(obj -> obj.getId() == idNota)
+                    .filter(obj -> obj.getId().equals(idNota))
                     .findFirst().ifPresent(nota -> {
                         nota.setTitulo(titulo);
                         nota.setContenido(contenido);
+                        GenerarData.getInstance().getFirestoreRepository()
+                                .saveNote(nota, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                                    @Override
+                                    public void onSuccess() {
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        //Error
+                                        Toast.makeText(DetailNoteActivity.this,
+                                                "Error al guardar: " + error,
+                                                Toast.LENGTH_SHORT).show();
+                                    }
+                                });
                     });
         }
     }

@@ -39,10 +39,8 @@ public class NoteFragment extends Fragment {
 
     public NoteFragment() {
         listaNotas = GenerarData.getInstance().getListaNotas();
-        lastId = listaNotas.stream()
-                .mapToInt(Note::getId)
-                .max()
-                .orElse(0);
+        // Ya no necesitamos calcular lastId porque Firestore maneja los IDs automáticamente
+        lastId = 0;
     }
 
     private ActivityResultLauncher<Intent> launchNewNoteActivity;
@@ -63,11 +61,30 @@ public class NoteFragment extends Fragment {
                             contenido = data.getStringExtra("contenido");
 
                             if (!titulo.isEmpty() || !contenido.isEmpty()) {
-                                int nuevoId = ++lastId;
-                                Note nuevaNota = new Note(nuevoId, titulo, contenido, new ArrayList<>(), true, false);
-                                listaNotas.add(0, nuevaNota);
-                                notaAdapter.notifyItemInserted(0);
-                                recyclerNotas.scrollToPosition(0);
+                                // Crear nueva nota con el constructor correcto
+                                Note nuevaNota = new Note(titulo, contenido);
+
+                                // Guardar en Firestore primero
+                                GenerarData.getInstance().getFirestoreRepository()
+                                        .saveNote(nuevaNota, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                                            @Override
+                                            public void onSuccess() {
+                                                // Agregar a la lista local solo después de guardar exitosamente
+                                                listaNotas.add(0, nuevaNota);
+                                                notaAdapter.notifyItemInserted(0);
+                                                recyclerNotas.scrollToPosition(0);
+                                            }
+
+                                            @Override
+                                            public void onError(String error) {
+                                                // Mostrar error si falla
+                                                if (getContext() != null) {
+                                                    android.widget.Toast.makeText(getContext(),
+                                                            "Error al guardar la nota: " + error,
+                                                            android.widget.Toast.LENGTH_SHORT).show();
+                                                }
+                                            }
+                                        });
                             }
                         } else {
                             int position = data.getIntExtra("position", -1);

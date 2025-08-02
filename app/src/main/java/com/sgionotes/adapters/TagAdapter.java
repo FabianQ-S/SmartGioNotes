@@ -102,17 +102,35 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
 
         menuAddFavorite.setOnClickListener(v -> {
             String tagName = currentTag.getEtiquetaDescripcion();
-            if (currentTag.isFavorite()) {
-                currentTag.setFavorite(false);
-                Toast.makeText(context, "'" + tagName + "' quitada de favoritas", Toast.LENGTH_SHORT).show();
-            } else {
-                currentTag.setFavorite(true);
-                Toast.makeText(context, "'" + tagName + "' añadida a favoritas", Toast.LENGTH_SHORT).show();
+            boolean newFavoriteStatus = !currentTag.isFavorite();
+
+            // Actualizar localmente
+            currentTag.setFavorite(newFavoriteStatus);
+
+            // Guardar en Firestore
+            if (currentTag.getId() != null && !currentTag.getId().isEmpty()) {
+                GenerarData.getInstance().getFirestoreRepository()
+                        .setTagFavorite(currentTag.getId(), newFavoriteStatus,
+                                new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                                    @Override
+                                    public void onSuccess() {
+                                        if (newFavoriteStatus) {
+                                            Toast.makeText(context, "'" + tagName + "' añadida a favoritas", Toast.LENGTH_SHORT).show();
+                                        } else {
+                                            Toast.makeText(context, "'" + tagName + "' quitada de favoritas", Toast.LENGTH_SHORT).show();
+                                        }
+                                        sortTags();
+                                        notifyDataSetChanged();
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        // Revertir cambio local si falla
+                                        currentTag.setFavorite(!newFavoriteStatus);
+                                        Toast.makeText(context, "Error al actualizar favorito: " + error, Toast.LENGTH_SHORT).show();
+                                    }
+                                });
             }
-            // GuardarFavoritos
-            GenerarData.getInstance().saveFavorites(context);
-            sortTags();
-            notifyDataSetChanged();
             popupWindow.dismiss();
         });
 
@@ -123,9 +141,30 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
 
         menuDelete.setOnClickListener(v -> {
             String tagName = currentTag.getEtiquetaDescripcion();
-            listaTags.remove(position);
-            notifyItemRemoved(position);
-            Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+
+            // Eliminar de Firestore primero
+            if (currentTag.getId() != null && !currentTag.getId().isEmpty()) {
+                GenerarData.getInstance().getFirestoreRepository()
+                        .deleteTag(currentTag.getId(), new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                            @Override
+                            public void onSuccess() {
+                                // Eliminar de la lista local solo si se eliminó exitosamente de Firestore
+                                listaTags.remove(position);
+                                notifyItemRemoved(position);
+                                Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Toast.makeText(context, "Error al eliminar etiqueta: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+            } else {
+                // Si no tiene ID, eliminar solo localmente
+                listaTags.remove(position);
+                notifyItemRemoved(position);
+                Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+            }
             popupWindow.dismiss();
         });
 
@@ -172,8 +211,32 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
     private void finishEditing(TagViewHolder holder, int position) {
         String newText = holder.etTagText.getText().toString().trim();
         if (!newText.isEmpty()) {
-            listaTags.get(position).setEtiquetaDescripcion(newText);
-            Toast.makeText(context, "Etiqueta actualizada", Toast.LENGTH_SHORT).show();
+            Tag tag = listaTags.get(position);
+            String oldText = tag.getEtiquetaDescripcion();
+
+            // Actualizar localmente
+            tag.setEtiquetaDescripcion(newText);
+
+            // Guardar en Firestore si tiene ID
+            if (tag.getId() != null && !tag.getId().isEmpty()) {
+                GenerarData.getInstance().getFirestoreRepository()
+                        .saveTag(tag, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                            @Override
+                            public void onSuccess() {
+                                Toast.makeText(context, "Etiqueta actualizada", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                // Revertir cambio local si falla
+                                tag.setEtiquetaDescripcion(oldText);
+                                Toast.makeText(context, "Error al actualizar etiqueta: " + error, Toast.LENGTH_SHORT).show();
+                                notifyItemChanged(position);
+                            }
+                        });
+            } else {
+                Toast.makeText(context, "Etiqueta actualizada localmente", Toast.LENGTH_SHORT).show();
+            }
         }
 
         holder.etTagText.setFocusable(false);

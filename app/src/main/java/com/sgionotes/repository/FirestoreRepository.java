@@ -1,295 +1,377 @@
 package com.sgionotes.repository;
-
 import android.content.Context;
 import android.util.Log;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreSettings;
+import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.sgionotes.models.Note;
 import com.sgionotes.models.Tag;
-import com.sgionotes.models.GenerarData;
-
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class FirestoreRepository {
-
     private static final String TAG = "FirestoreRepository";
     private static final String COLLECTION_NOTES = "notes";
     private static final String COLLECTION_TAGS = "tags";
-
-    private FirebaseFirestore db;
-    private FirebaseAuth mAuth;
+    private final FirebaseFirestore db;
+    private final FirebaseAuth mAuth;
     private Context context;
-
     public FirestoreRepository(Context context) {
-        this.context = context;
         db = FirebaseFirestore.getInstance();
+        FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
+                .setPersistenceEnabled(true)
+                .build();
+        db.setFirestoreSettings(settings);
         mAuth = FirebaseAuth.getInstance();
+        this.context = context;
     }
-
-    public interface DataSyncCallback {
+    public interface DataCallback<T> {
+        void onSuccess(T data);
+        void onError(String error);
+    }
+    public interface SimpleCallback {
         void onSuccess();
         void onError(String error);
     }
-
-    // SincronizarDatosRed
-    public void backupLocalDataToFirestore(DataSyncCallback callback) {
+    public String getCurrentUserId() {
         FirebaseUser user = mAuth.getCurrentUser();
-        if (user == null) {
+        return user != null ? user.getUid() : null;
+    }
+    public void getAllTags(DataCallback<List<Tag>> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
             callback.onError("Usuario no autenticado");
             return;
         }
-
-        GenerarData generarData = GenerarData.getInstancia();
-        LocalRepository localRepo = generarData.getLocalRepository();
-
-        if (localRepo == null) {
-            callback.onError("Repository local no inicializado");
-            return;
-        }
-
-        String userId = user.getUid();
-
-        // BackupEtiquetas
-        backupTagsToFirestore(userId, localRepo, new DataSyncCallback() {
-            @Override
-            public void onSuccess() {
-                // Luego hacer backup de las notas
-                backupNotesToFirestore(userId, localRepo, callback);
-            }
-
-            @Override
-            public void onError(String error) {
-                callback.onError("Error al respaldar etiquetas: " + error);
-            }
-        });
+        db.collection(COLLECTION_TAGS)
+                .whereEqualTo("userId", userId)
+                .orderBy("isFavorite", Query.Direction.DESCENDING)
+                .orderBy("favoriteTimestamp", Query.Direction.ASCENDING)
+                .orderBy("etiquetaDescripcion", Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Tag> tags = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        Tag tag = document.toObject(Tag.class);
+                        tag.setId(document.getId());
+                        tags.add(tag);
+                    }
+                    callback.onSuccess(tags);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo tags", e);
+                    callback.onError("Error al obtener etiquetas: " + e.getMessage());
+                });
     }
-
-    // RestaurarDatos
-    public void restoreDataFromFirestore(DataSyncCallback callback) {
-        FirebaseUser user = mAuth.getCurrentUser();
-        if (user == null) {
+    public void getFavoriteTags(DataCallback<List<Tag>> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
             callback.onError("Usuario no autenticado");
             return;
         }
-
-        String userId = user.getUid();
-
-        // RestaurarEtiquetas
-        restoreTagsFromFirestore(userId, new DataSyncCallback() {
-            @Override
-            public void onSuccess() {
-                restoreNotesFromFirestore(userId, callback);
-            }
-
-            @Override
-            public void onError(String error) {
-                callback.onError("Error al restaurar etiquetas: " + error);
-            }
-        });
-    }
-
-    private void backupTagsToFirestore(String userId, LocalRepository localRepo, DataSyncCallback callback) {
-        List<Tag> tags = localRepo.getAllTags();
-
-        // EliminarEtiquetasExistentes
-        db.collection("users").document(userId).collection(COLLECTION_TAGS)
+        db.collection(COLLECTION_TAGS)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isFavorite", true)
+                .orderBy("favoriteTimestamp", Query.Direction.ASCENDING)
                 .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        // Eliminar etiquetas existentes
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            document.getReference().delete();
-                        }
-                        for (Tag tag : tags) {
-                            Map<String, Object> tagData = tagToMap(tag);
-                            db.collection("users").document(userId).collection(COLLECTION_TAGS)
-                                    .add(tagData);
-                        }
-                        Log.d(TAG, "Etiquetas respaldadas en Firestore: " + tags.size());
-                        callback.onSuccess();
-                    } else {
-                        Log.w(TAG, "Error al respaldar etiquetas", task.getException());
-                        callback.onError("Error al respaldar etiquetas");
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Tag> tags = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        Tag tag = document.toObject(Tag.class);
+                        tag.setId(document.getId());
+                        tags.add(tag);
                     }
+                    callback.onSuccess(tags);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo tags favoritos", e);
+                    callback.onError("Error al obtener etiquetas favoritas: " + e.getMessage());
                 });
     }
-
-    private void backupNotesToFirestore(String userId, LocalRepository localRepo, DataSyncCallback callback) {
-        List<Note> notes = localRepo.getAllNotes();
-        List<Note> trashNotes = localRepo.getTrashNotes();
-
-        // ConvinarNotas
-        List<Note> allNotes = new ArrayList<>(notes);
-        allNotes.addAll(trashNotes);
-
-        // EliminarNotasExistentes
-        db.collection("users").document(userId).collection(COLLECTION_NOTES)
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        // EliminarNotasExistentes
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            document.getReference().delete();
-                        }
-
-                        // SubirNotasActuales
-                        for (Note note : allNotes) {
-                            Map<String, Object> noteData = noteToMap(note);
-                            db.collection("users").document(userId).collection(COLLECTION_NOTES)
-                                    .add(noteData);
-                        }
-
-                        Log.d(TAG, "Notas respaldadas en Firestore: " + allNotes.size());
-                        callback.onSuccess();
-                    } else {
-                        Log.w(TAG, "Error al respaldar notas", task.getException());
-                        callback.onError("Error al respaldar notas");
-                    }
-                });
-    }
-
-    private void restoreTagsFromFirestore(String userId, DataSyncCallback callback) {
-        GenerarData generarData = GenerarData.getInstancia();
-        LocalRepository localRepo = generarData.getLocalRepository();
-
-        if (localRepo == null) {
-            callback.onError("Repository local no inicializado");
+    public void saveTag(Tag tag, SimpleCallback callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            Log.e(TAG, "Error: Usuario no autenticado");
+            callback.onError("Usuario no autenticado");
             return;
         }
+        Log.d(TAG, "Intentando guardar tag: " + tag.getEtiquetaDescripcion() + " para usuario: " + userId);
+        tag.setUserId(userId);
+        if (tag.getId() == null || tag.getId().isEmpty()) {
 
-        db.collection("users").document(userId).collection(COLLECTION_TAGS)
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        List<Tag> tags = new ArrayList<>();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            Tag tag = documentToTag(document);
-                            if (tag != null) {
-                                tags.add(tag);
-                                localRepo.saveTag(tag); //Sqlite
-                            }
-                        }
-
-                        Log.d(TAG, "Etiquetas restauradas desde Firestore: " + tags.size());
+            //NuevaEtiqueta
+            Log.d(TAG, "Creando nueva etiqueta en Firestore");
+            db.collection(COLLECTION_TAGS)
+                    .add(tag)
+                    .addOnSuccessListener(documentReference -> {
+                        tag.setId(documentReference.getId());
+                        Log.d(TAG, "Tag creado exitosamente con ID: " + documentReference.getId());
                         callback.onSuccess();
-                    } else {
-                        Log.w(TAG, "Error al restaurar etiquetas", task.getException());
-                        callback.onError("Error al restaurar etiquetas");
-                    }
-                });
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error creando tag en Firestore", e);
+                        callback.onError("Error al crear etiqueta: " + e.getMessage());
+                    });
+        } else {
+            //ActualizarEtiqueta
+            Log.d(TAG, "Actualizando etiqueta existente con ID: " + tag.getId());
+            db.collection(COLLECTION_TAGS)
+                    .document(tag.getId())
+                    .set(tag)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Tag actualizado exitosamente");
+                        callback.onSuccess();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error actualizando tag en Firestore", e);
+                        callback.onError("Error al actualizar etiqueta: " + e.getMessage());
+                    });
+        }
     }
-
-    private void restoreNotesFromFirestore(String userId, DataSyncCallback callback) {
-        GenerarData generarData = GenerarData.getInstancia();
-        LocalRepository localRepo = generarData.getLocalRepository();
-
-        if (localRepo == null) {
-            callback.onError("Repository local no inicializado");
+    public void deleteTag(String tagId, SimpleCallback callback) {
+        if (tagId == null || tagId.isEmpty()) {
+            callback.onError("ID de etiqueta inválido");
             return;
         }
-
-        db.collection("users").document(userId).collection(COLLECTION_NOTES)
-                .get()
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        List<Note> notes = new ArrayList<>();
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            Note note = documentToNote(document);
-                            if (note != null) {
-                                notes.add(note);
-                                localRepo.saveNote(note); //Sqlite
-                            }
-                        }
-
-                        Log.d(TAG, "Notas restauradas desde Firestore: " + notes.size());
-                        callback.onSuccess();
-                    } else {
-                        Log.w(TAG, "Error al restaurar notas", task.getException());
-                        callback.onError("Error al restaurar notas");
-                    }
+        db.collection(COLLECTION_TAGS)
+                .document(tagId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Tag eliminado");
+                    callback.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error eliminando tag", e);
+                    callback.onError("Error al eliminar etiqueta: " + e.getMessage());
                 });
     }
-
-    // ConvertirNoteMapParaFirestore
-    private Map<String, Object> noteToMap(Note note) {
-        Map<String, Object> noteData = new HashMap<>();
-        noteData.put("id", note.getId());
-        noteData.put("titulo", note.getTitulo());
-        noteData.put("contenido", note.getContenido());
-        noteData.put("isTrash", note.isTrash());
-
-        // ConvertirTagsListaDeStrings
-        List<String> tagNames = new ArrayList<>();
-        if (note.getEtiquetas() != null) {
-            for (Tag tag : note.getEtiquetas()) {
-                tagNames.add(tag.getEtiquetaDescripcion());
-            }
+    public void setTagFavorite(String tagId, boolean isFavorite, SimpleCallback callback) {
+        if (tagId == null || tagId.isEmpty()) {
+            callback.onError("ID de etiqueta inválido");
+            return;
         }
-        noteData.put("tags", tagNames);
+        db.collection(COLLECTION_TAGS)
+                .document(tagId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Tag tag = documentSnapshot.toObject(Tag.class);
+                        if (tag != null) {
+                            tag.setId(documentSnapshot.getId());
+                            tag.setFavorite(isFavorite);
 
-        return noteData;
+                            db.collection(COLLECTION_TAGS)
+                                    .document(tagId)
+                                    .set(tag)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Tag favorito actualizado");
+                                        callback.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error actualizando favorito", e);
+                                        callback.onError("Error al actualizar favorito: " + e.getMessage());
+                                    });
+                        } else {
+                            callback.onError("Error al obtener datos de la etiqueta");
+                        }
+                    } else {
+                        callback.onError("Etiqueta no encontrada");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo tag", e);
+                    callback.onError("Error al obtener etiqueta: " + e.getMessage());
+                });
     }
-
-    // ConvertirMapFirestoreNote
-    private Note documentToNote(QueryDocumentSnapshot document) {
-        try {
-            Long id = document.getLong("id");
-            String titulo = document.getString("titulo");
-            String contenido = document.getString("contenido");
-            Boolean isTrash = document.getBoolean("isTrash");
-            List<String> tagNames = (List<String>) document.get("tags");
-
-            // CrearListaDeTags
-            List<Tag> tags = new ArrayList<>();
-            if (tagNames != null) {
-                for (String tagName : tagNames) {
-                    tags.add(new Tag(tagName));
-                }
-            }
-
-            return new Note(
-                id != null ? id.intValue() : 0,
-                titulo != null ? titulo : "",
-                contenido != null ? contenido : "",
-                tags,
-                false,
-                isTrash != null ? isTrash : false
-            );
-        } catch (Exception e) {
-            Log.e(TAG, "Error al convertir documento a Note", e);
-            return null;
+    //Notas
+    public void getAllNotes(DataCallback<List<Note>> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            callback.onError("Usuario no autenticado");
+            return;
+        }
+        db.collection(COLLECTION_NOTES)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isTrash", false)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Note> notes = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        Note note = document.toObject(Note.class);
+                        note.setId(document.getId());
+                        notes.add(note);
+                    }
+                    callback.onSuccess(notes);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo notas", e);
+                    callback.onError("Error al obtener notas: " + e.getMessage());
+                });
+    }
+    public void getTrashNotes(DataCallback<List<Note>> callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            callback.onError("Usuario no autenticado");
+            return;
+        }
+        db.collection(COLLECTION_NOTES)
+                .whereEqualTo("userId", userId)
+                .whereEqualTo("isTrash", true)
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Note> notes = new ArrayList<>();
+                    for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
+                        Note note = document.toObject(Note.class);
+                        note.setId(document.getId());
+                        notes.add(note);
+                    }
+                    callback.onSuccess(notes);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo notas de papelera", e);
+                    callback.onError("Error al obtener notas de papelera: " + e.getMessage());
+                });
+    }
+    public void saveNote(Note note, SimpleCallback callback) {
+        String userId = getCurrentUserId();
+        if (userId == null) {
+            callback.onError("Usuario no autenticado");
+            return;
+        }
+        note.setUserId(userId);
+        note.setTimestamp(System.currentTimeMillis());
+        if (note.getId() == null || note.getId().isEmpty()) {
+            //CrearNota
+            db.collection(COLLECTION_NOTES)
+                    .add(note)
+                    .addOnSuccessListener(documentReference -> {
+                        note.setId(documentReference.getId());
+                        Log.d(TAG, "Nota creada con ID: " + documentReference.getId());
+                        callback.onSuccess();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error creando nota", e);
+                        callback.onError("Error al crear nota: " + e.getMessage());
+                    });
+        } else {
+            //ActualizarNota
+            db.collection(COLLECTION_NOTES)
+                    .document(note.getId())
+                    .set(note)
+                    .addOnSuccessListener(aVoid -> {
+                        Log.d(TAG, "Nota actualizada");
+                        callback.onSuccess();
+                    })
+                    .addOnFailureListener(e -> {
+                        Log.e(TAG, "Error actualizando nota", e);
+                        callback.onError("Error al actualizar nota: " + e.getMessage());
+                    });
         }
     }
-
-    //TagMap
-    private Map<String, Object> tagToMap(Tag tag) {
-        Map<String, Object> tagData = new HashMap<>();
-        tagData.put("descripcion", tag.getEtiquetaDescripcion());
-        tagData.put("isFavorite", tag.isFavorite());
-        tagData.put("favoriteTimestamp", tag.getFavoriteTimestamp());
-        return tagData;
-    }
-
-    // FirestoreTagDesdeUnDocumento
-    private Tag documentToTag(QueryDocumentSnapshot document) {
-        try {
-            String descripcion = document.getString("descripcion");
-            Boolean isFavorite = document.getBoolean("isFavorite");
-            Long favoriteTimestamp = document.getLong("favoriteTimestamp");
-
-            Tag tag = new Tag(descripcion != null ? descripcion : "");
-            tag.setFavorite(isFavorite != null ? isFavorite : false);
-            tag.setFavoriteTimestamp(favoriteTimestamp != null ? favoriteTimestamp : System.currentTimeMillis());
-
-            return tag;
-        } catch (Exception e) {
-            Log.e(TAG, "Error al convertir documento a Tag", e);
-            return null;
+    public void deleteNotePermanently(String noteId, SimpleCallback callback) {
+        if (noteId == null || noteId.isEmpty()) {
+            callback.onError("ID de nota inválido");
+            return;
         }
+        db.collection(COLLECTION_NOTES)
+                .document(noteId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    Log.d(TAG, "Nota eliminada permanentemente");
+                    callback.onSuccess();
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error eliminando nota permanentemente", e);
+                    callback.onError("Error al eliminar nota: " + e.getMessage());
+                });
+    }
+    public void moveNoteToTrash(String noteId, SimpleCallback callback) {
+        updateNoteTrashStatus(noteId, true, callback);
+    }
+    public void restoreNoteFromTrash(String noteId, SimpleCallback callback) {
+        updateNoteTrashStatus(noteId, false, callback);
+    }
+    private void updateNoteTrashStatus(String noteId, boolean isTrash, SimpleCallback callback) {
+        if (noteId == null || noteId.isEmpty()) {
+            callback.onError("ID de nota inválido");
+            return;
+        }
+        db.collection(COLLECTION_NOTES)
+                .document(noteId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Note note = documentSnapshot.toObject(Note.class);
+                        if (note != null) {
+                            note.setId(documentSnapshot.getId());
+                            note.setTrash(isTrash);
+                            note.setTimestamp(System.currentTimeMillis());
+
+                            db.collection(COLLECTION_NOTES)
+                                    .document(noteId)
+                                    .set(note)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Estado de papelera actualizado");
+                                        callback.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error actualizando estado de papelera", e);
+                                        callback.onError("Error al actualizar estado: " + e.getMessage());
+                                    });
+                        } else {
+                            callback.onError("Error al obtener datos de la nota");
+                        }
+                    } else {
+                        callback.onError("Nota no encontrada");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo nota", e);
+                    callback.onError("Error al obtener nota: " + e.getMessage());
+                });
+    }
+    public void setNoteFavorite(String noteId, boolean isFavorite, SimpleCallback callback) {
+        if (noteId == null || noteId.isEmpty()) {
+            callback.onError("ID de nota inválido");
+            return;
+        }
+        db.collection(COLLECTION_NOTES)
+                .document(noteId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        Note note = documentSnapshot.toObject(Note.class);
+                        if (note != null) {
+                            note.setId(documentSnapshot.getId());
+                            note.setFavorite(isFavorite);
+
+                            db.collection(COLLECTION_NOTES)
+                                    .document(noteId)
+                                    .set(note)
+                                    .addOnSuccessListener(aVoid -> {
+                                        Log.d(TAG, "Nota favorita actualizada");
+                                        callback.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error actualizando favorito de nota", e);
+                                        callback.onError("Error al actualizar favorito: " + e.getMessage());
+                                    });
+                        } else {
+                            callback.onError("Error al obtener datos de la nota");
+                        }
+                    } else {
+                        callback.onError("Nota no encontrada");
+                    }
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Error obteniendo nota", e);
+                    callback.onError("Error al obtener nota: " + e.getMessage());
+                });
     }
 }
