@@ -10,16 +10,19 @@ import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.sgionotes.models.Note;
 import com.sgionotes.models.Tag;
+import com.sgionotes.models.GenerarData;
 import java.util.ArrayList;
 import java.util.List;
-
 public class FirestoreRepository {
     private static final String TAG = "FirestoreRepository";
+    private static final String COLLECTION_USERS = "users";
     private static final String COLLECTION_NOTES = "notes";
     private static final String COLLECTION_TAGS = "tags";
     private final FirebaseFirestore db;
     private final FirebaseAuth mAuth;
     private Context context;
+    private String currentUserId = null;
+    private FirebaseAuth.AuthStateListener authStateListener; // NUEVO: Listener de cambios de autenticación
     public FirestoreRepository(Context context) {
         db = FirebaseFirestore.getInstance();
         FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
@@ -28,6 +31,39 @@ public class FirestoreRepository {
         db.setFirestoreSettings(settings);
         mAuth = FirebaseAuth.getInstance();
         this.context = context;
+        setupAuthStateListener();
+    }
+    private void setupAuthStateListener() {
+        authStateListener = firebaseAuth -> {
+            FirebaseUser user = firebaseAuth.getCurrentUser();
+            String newUserId = user != null ? user.getUid() : null;
+
+            if (!java.util.Objects.equals(currentUserId, newUserId)) {
+                Log.d(TAG, "Usuario cambió de: " + currentUserId + " a: " + newUserId);
+                currentUserId = newUserId;
+                if (context instanceof android.app.Activity) {
+                    ((android.app.Activity) context).runOnUiThread(() -> {
+                        GenerarData.getInstancia().onUserChanged(currentUserId);
+                    });
+                }
+            }
+        };
+        mAuth.addAuthStateListener(authStateListener);
+    }
+    public String getCurrentUserId() {
+        FirebaseUser user = mAuth.getCurrentUser();
+        String userId = user != null ? user.getUid() : null;
+        if (!java.util.Objects.equals(currentUserId, userId)) {
+            Log.d(TAG, "Usuario detectado como cambiado en getCurrentUserId(): " + currentUserId + " -> " + userId);
+            currentUserId = userId;
+        }
+        return userId;
+    }
+    //LimpiarRepsositorio
+    public void cleanup() {
+        if (authStateListener != null) {
+            mAuth.removeAuthStateListener(authStateListener);
+        }
     }
     public interface DataCallback<T> {
         void onSuccess(T data);
@@ -37,21 +73,18 @@ public class FirestoreRepository {
         void onSuccess();
         void onError(String error);
     }
-    public String getCurrentUserId() {
-        FirebaseUser user = mAuth.getCurrentUser();
-        return user != null ? user.getUid() : null;
-    }
     public void getAllTags(DataCallback<List<Tag>> callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
             callback.onError("Usuario no autenticado");
             return;
         }
-        db.collection(COLLECTION_TAGS)
-                .whereEqualTo("userId", userId)
-                .orderBy("isFavorite", Query.Direction.DESCENDING)
-                .orderBy("favoriteTimestamp", Query.Direction.ASCENDING)
-                .orderBy("etiquetaDescripcion", Query.Direction.ASCENDING)
+
+        Log.d(TAG, "Obteniendo tags para usuario: " + userId);
+        //ConsultaBasica
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_TAGS)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Tag> tags = new ArrayList<>();
@@ -60,10 +93,17 @@ public class FirestoreRepository {
                         tag.setId(document.getId());
                         tags.add(tag);
                     }
+                    tags.sort((t1, t2) -> {
+                        if (t1.isFavorite() != t2.isFavorite()) {
+                            return Boolean.compare(t2.isFavorite(), t1.isFavorite());
+                        }
+                        return t1.getEtiquetaDescripcion().compareToIgnoreCase(t2.getEtiquetaDescripcion());
+                    });
+                    Log.d(TAG, "Tags obtenidos exitosamente: " + tags.size() + " para usuario: " + userId);
                     callback.onSuccess(tags);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo tags", e);
+                    Log.e(TAG, "Error obteniendo tags para usuario: " + userId, e);
                     callback.onError("Error al obtener etiquetas: " + e.getMessage());
                 });
     }
@@ -73,18 +113,21 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-        db.collection(COLLECTION_TAGS)
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("isFavorite", true)
-                .orderBy("favoriteTimestamp", Query.Direction.ASCENDING)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_TAGS)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Tag> tags = new ArrayList<>();
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Tag tag = document.toObject(Tag.class);
                         tag.setId(document.getId());
-                        tags.add(tag);
+                        if (tag.isFavorite()) {
+                            tags.add(tag);
+                        }
                     }
+                    tags.sort((t1, t2) -> Long.compare(t1.getFavoriteTimestamp(), t2.getFavoriteTimestamp()));
+
                     callback.onSuccess(tags);
                 })
                 .addOnFailureListener(e -> {
@@ -92,6 +135,7 @@ public class FirestoreRepository {
                     callback.onError("Error al obtener etiquetas favoritas: " + e.getMessage());
                 });
     }
+
     public void saveTag(Tag tag, SimpleCallback callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
@@ -99,13 +143,12 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-        Log.d(TAG, "Intentando guardar tag: " + tag.getEtiquetaDescripcion() + " para usuario: " + userId);
-        tag.setUserId(userId);
+        Log.d(TAG, "Guardando tag: " + tag.getEtiquetaDescripcion() + " para usuario: " + userId);
         if (tag.getId() == null || tag.getId().isEmpty()) {
-
-            //NuevaEtiqueta
             Log.d(TAG, "Creando nueva etiqueta en Firestore");
-            db.collection(COLLECTION_TAGS)
+            db.collection(COLLECTION_USERS)
+                    .document(userId)
+                    .collection(COLLECTION_TAGS)
                     .add(tag)
                     .addOnSuccessListener(documentReference -> {
                         tag.setId(documentReference.getId());
@@ -117,9 +160,10 @@ public class FirestoreRepository {
                         callback.onError("Error al crear etiqueta: " + e.getMessage());
                     });
         } else {
-            //ActualizarEtiqueta
             Log.d(TAG, "Actualizando etiqueta existente con ID: " + tag.getId());
-            db.collection(COLLECTION_TAGS)
+            db.collection(COLLECTION_USERS)
+                    .document(userId)
+                    .collection(COLLECTION_TAGS)
                     .document(tag.getId())
                     .set(tag)
                     .addOnSuccessListener(aVoid -> {
@@ -133,11 +177,14 @@ public class FirestoreRepository {
         }
     }
     public void deleteTag(String tagId, SimpleCallback callback) {
-        if (tagId == null || tagId.isEmpty()) {
-            callback.onError("ID de etiqueta inválido");
+        String userId = getCurrentUserId();
+        if (userId == null || tagId == null || tagId.isEmpty()) {
+            callback.onError("Usuario no autenticado o ID de etiqueta inválido");
             return;
         }
-        db.collection(COLLECTION_TAGS)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_TAGS)
                 .document(tagId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
@@ -150,11 +197,14 @@ public class FirestoreRepository {
                 });
     }
     public void setTagFavorite(String tagId, boolean isFavorite, SimpleCallback callback) {
-        if (tagId == null || tagId.isEmpty()) {
-            callback.onError("ID de etiqueta inválido");
+        String userId = getCurrentUserId();
+        if (userId == null || tagId == null || tagId.isEmpty()) {
+            callback.onError("Usuario no autenticado o ID de etiqueta inválido");
             return;
         }
-        db.collection(COLLECTION_TAGS)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_TAGS)
                 .document(tagId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -163,8 +213,9 @@ public class FirestoreRepository {
                         if (tag != null) {
                             tag.setId(documentSnapshot.getId());
                             tag.setFavorite(isFavorite);
-
-                            db.collection(COLLECTION_TAGS)
+                            db.collection(COLLECTION_USERS)
+                                    .document(userId)
+                                    .collection(COLLECTION_TAGS)
                                     .document(tagId)
                                     .set(tag)
                                     .addOnSuccessListener(aVoid -> {
@@ -194,22 +245,30 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-        db.collection(COLLECTION_NOTES)
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("isTrash", false)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+
+        Log.d(TAG, "Obteniendo notas para usuario: " + userId);
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_NOTES)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Note> notes = new ArrayList<>();
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Note note = document.toObject(Note.class);
                         note.setId(document.getId());
-                        notes.add(note);
+
+                        //NotasPapelera
+                        if (!note.isTrash()) {
+                            notes.add(note);
+                        }
                     }
+                    //Orden
+                    notes.sort((n1, n2) -> Long.compare(n2.getTimestamp(), n1.getTimestamp()));
+                    Log.d(TAG, "Notas obtenidas exitosamente: " + notes.size() + " para usuario: " + userId);
                     callback.onSuccess(notes);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo notas", e);
+                    Log.e(TAG, "Error obteniendo notas para usuario: " + userId, e);
                     callback.onError("Error al obtener notas: " + e.getMessage());
                 });
     }
@@ -219,18 +278,22 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-        db.collection(COLLECTION_NOTES)
-                .whereEqualTo("userId", userId)
-                .whereEqualTo("isTrash", true)
-                .orderBy("timestamp", Query.Direction.DESCENDING)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_NOTES)
                 .get()
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Note> notes = new ArrayList<>();
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Note note = document.toObject(Note.class);
                         note.setId(document.getId());
-                        notes.add(note);
+                        //papelera
+                        if (note.isTrash()) {
+                            notes.add(note);
+                        }
                     }
+                    //Orden
+                    notes.sort((n1, n2) -> Long.compare(n2.getTimestamp(), n1.getTimestamp()));
                     callback.onSuccess(notes);
                 })
                 .addOnFailureListener(e -> {
@@ -244,11 +307,13 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-        note.setUserId(userId);
+        Log.d(TAG, "Guardando nota para usuario: " + userId);
         note.setTimestamp(System.currentTimeMillis());
         if (note.getId() == null || note.getId().isEmpty()) {
-            //CrearNota
-            db.collection(COLLECTION_NOTES)
+            Log.d(TAG, "Creando nueva nota en Firestore");
+            db.collection(COLLECTION_USERS)
+                    .document(userId)
+                    .collection(COLLECTION_NOTES)
                     .add(note)
                     .addOnSuccessListener(documentReference -> {
                         note.setId(documentReference.getId());
@@ -260,8 +325,10 @@ public class FirestoreRepository {
                         callback.onError("Error al crear nota: " + e.getMessage());
                     });
         } else {
-            //ActualizarNota
-            db.collection(COLLECTION_NOTES)
+            Log.d(TAG, "Actualizando nota existente con ID: " + note.getId());
+            db.collection(COLLECTION_USERS)
+                    .document(userId)
+                    .collection(COLLECTION_NOTES)
                     .document(note.getId())
                     .set(note)
                     .addOnSuccessListener(aVoid -> {
@@ -275,11 +342,14 @@ public class FirestoreRepository {
         }
     }
     public void deleteNotePermanently(String noteId, SimpleCallback callback) {
-        if (noteId == null || noteId.isEmpty()) {
-            callback.onError("ID de nota inválido");
+        String userId = getCurrentUserId();
+        if (userId == null || noteId == null || noteId.isEmpty()) {
+            callback.onError("Usuario no autenticado o ID de nota inválido");
             return;
         }
-        db.collection(COLLECTION_NOTES)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_NOTES)
                 .document(noteId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
@@ -298,11 +368,14 @@ public class FirestoreRepository {
         updateNoteTrashStatus(noteId, false, callback);
     }
     private void updateNoteTrashStatus(String noteId, boolean isTrash, SimpleCallback callback) {
-        if (noteId == null || noteId.isEmpty()) {
-            callback.onError("ID de nota inválido");
+        String userId = getCurrentUserId();
+        if (userId == null || noteId == null || noteId.isEmpty()) {
+            callback.onError("Usuario no autenticado o ID de nota inválido");
             return;
         }
-        db.collection(COLLECTION_NOTES)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_NOTES)
                 .document(noteId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -313,7 +386,9 @@ public class FirestoreRepository {
                             note.setTrash(isTrash);
                             note.setTimestamp(System.currentTimeMillis());
 
-                            db.collection(COLLECTION_NOTES)
+                            db.collection(COLLECTION_USERS)
+                                    .document(userId)
+                                    .collection(COLLECTION_NOTES)
                                     .document(noteId)
                                     .set(note)
                                     .addOnSuccessListener(aVoid -> {
@@ -337,11 +412,14 @@ public class FirestoreRepository {
                 });
     }
     public void setNoteFavorite(String noteId, boolean isFavorite, SimpleCallback callback) {
-        if (noteId == null || noteId.isEmpty()) {
-            callback.onError("ID de nota inválido");
+        String userId = getCurrentUserId();
+        if (userId == null || noteId == null || noteId.isEmpty()) {
+            callback.onError("Usuario no autenticado o ID de nota inválido");
             return;
         }
-        db.collection(COLLECTION_NOTES)
+        db.collection(COLLECTION_USERS)
+                .document(userId)
+                .collection(COLLECTION_NOTES)
                 .document(noteId)
                 .get()
                 .addOnSuccessListener(documentSnapshot -> {
@@ -351,7 +429,9 @@ public class FirestoreRepository {
                             note.setId(documentSnapshot.getId());
                             note.setFavorite(isFavorite);
 
-                            db.collection(COLLECTION_NOTES)
+                            db.collection(COLLECTION_USERS)
+                                    .document(userId)
+                                    .collection(COLLECTION_NOTES)
                                     .document(noteId)
                                     .set(note)
                                     .addOnSuccessListener(aVoid -> {

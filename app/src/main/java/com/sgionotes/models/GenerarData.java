@@ -5,182 +5,301 @@ import com.sgionotes.repository.FirestoreRepository;
 import java.util.ArrayList;
 import java.util.List;
 public class GenerarData {
-
+    public interface DataChangeListener {
+        void onDataChanged();
+    }
     public interface DataInitializationCallback {
         void onInitializationComplete();
         void onInitializationError(String error);
     }
-
     private static GenerarData instancia;
     private FirestoreRepository firestoreRepository;
     private List<Note> listaNotas;
     private List<Tag> listaEtiquetas;
+    private List<DataChangeListener> dataChangeListeners;
+
     private GenerarData() {
         listaNotas = new ArrayList<>();
         listaEtiquetas = new ArrayList<>();
+        dataChangeListeners = new ArrayList<>();
     }
+
     public static GenerarData getInstancia() {
         if (instancia == null) {
             instancia = new GenerarData();
         }
         return instancia;
     }
+
     public static GenerarData getInstance() {
         return getInstancia();
     }
 
+    //Metodos
+    public void addDataChangeListener(DataChangeListener listener) {
+        if (!dataChangeListeners.contains(listener)) {
+            dataChangeListeners.add(listener);
+        }
+    }
+    public void removeDataChangeListener(DataChangeListener listener) {
+        dataChangeListeners.remove(listener);
+    }
+    private void notifyDataChanged() {
+        Log.d("GenerarData", "Notificando cambio de datos a " + dataChangeListeners.size() + " listeners - Notas: " + getListaNotas().size() + ", Etiquetas: " + getListaEtiquetas().size());
+        for (DataChangeListener listener : dataChangeListeners) {
+            listener.onDataChanged();
+        }
+    }
     public void initializeWithContext(Context context) {
         if (firestoreRepository == null) {
             firestoreRepository = new FirestoreRepository(context);
-            loadDataFromFirestore();
         }
+        loadDataFromFirestore(); //CargarDatos
     }
     private void loadDataFromFirestore() {
         if (firestoreRepository == null) return;
+        String currentUserId = firestoreRepository.getCurrentUserId();
+        Log.d("GenerarData", "Cargando datos para usuario: " + currentUserId);
         firestoreRepository.getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
             @Override
             public void onSuccess(List<Note> notes) {
                 listaNotas = notes;
+                Log.d("GenerarData", "Notas cargadas exitosamente: " + notes.size() + " notas para usuario " + currentUserId);
+                notifyDataChanged();
             }
-
             @Override
             public void onError(String error) {
                 listaNotas = new ArrayList<>();
+                Log.e("GenerarData", "Error cargando notas: " + error);
+                notifyDataChanged();
             }
         });
+        
         firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
             @Override
             public void onSuccess(List<Tag> tags) {
                 listaEtiquetas = tags;
+                Log.d("GenerarData", "Etiquetas cargadas exitosamente: " + tags.size() + " etiquetas para usuario " + currentUserId);
+                notifyDataChanged();
             }
-
             @Override
             public void onError(String error) {
                 listaEtiquetas = new ArrayList<>();
+                Log.e("GenerarData", "Error cargando etiquetas: " + error);
+                notifyDataChanged();
             }
         });
     }
+
     public FirestoreRepository getFirestoreRepository() {
         return firestoreRepository;
     }
+
     public List<Note> getListaNotas() {
         if (listaNotas == null) {
             listaNotas = new ArrayList<>();
         }
         return listaNotas;
     }
+
     public List<Tag> getListaEtiquetas() {
         if (listaEtiquetas == null) {
             listaEtiquetas = new ArrayList<>();
         }
         return listaEtiquetas;
     }
+
     public void addNota(Note nota) {
         if (listaNotas == null) {
             listaNotas = new ArrayList<>();
         }
         listaNotas.add(nota);
+        notifyDataChanged();
         if (firestoreRepository != null) {
             firestoreRepository.saveNote(nota, new FirestoreRepository.SimpleCallback() {
                 @Override
-                public void onSuccess() {}
-
+                public void onSuccess() {
+                    Log.d("GenerarData", "Nota guardada exitosamente en Firestore");
+                }
                 @Override
-                public void onError(String error) {}
+                public void onError(String error) {
+                    Log.e("GenerarData", "Error guardando nota: " + error);
+                }
             });
         }
     }
+
     public void addTag(Tag tag) {
         if (listaEtiquetas == null) {
             listaEtiquetas = new ArrayList<>();
         }
         listaEtiquetas.add(tag);
+        notifyDataChanged();
         if (firestoreRepository != null) {
             firestoreRepository.saveTag(tag, new FirestoreRepository.SimpleCallback() {
                 @Override
-                public void onSuccess() {}
-
-                @Override
-                public void onError(String error) {}
-            });
-        }
-    }
-    public void loadFavorites(Context context) {
-        if (firestoreRepository != null) {
-            firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
-                @Override
-                public void onSuccess(List<Tag> tags) {
-                    listaEtiquetas = tags;
+                public void onSuccess() {
+                    Log.d("GenerarData", "Etiqueta guardada exitosamente en Firestore");
                 }
-
                 @Override
                 public void onError(String error) {
+                    Log.e("GenerarData", "Error guardando etiqueta: " + error);
                 }
             });
         }
     }
-    public void saveFavorites(Context context) {
+    public void clearUserData() {
+        if (listaNotas != null) {
+            listaNotas.clear();
+        }
+        if (listaEtiquetas != null) {
+            listaEtiquetas.clear();
+        }
+        notifyDataChanged();
     }
-    public void createDefaultDataIfEmpty() {
-        createDefaultDataIfEmptyWithCallback(null);
+    public void forceReloadUserData() {
+        clearUserData();
+        loadDataFromFirestore();
     }
-    public void createDefaultDataIfEmptyWithCallback(DataInitializationCallback callback) {
+    public void refreshDataForCurrentUser() {
+        refreshDataForCurrentUser(null);
+    }
+    public void refreshDataForCurrentUser(DataInitializationCallback callback) {
+        String currentUserId = firestoreRepository != null ? firestoreRepository.getCurrentUserId() : null;
+        if (currentUserId != null) {
+            Log.d("GenerarData", "Refrescando datos para usuario actual: " + currentUserId);
+            clearUserData();
+            loadDataFromFirestoreWithCallback(callback);
+        } else {
+            Log.w("GenerarData", "No hay usuario autenticado para refrescar datos");
+            if (callback != null) {
+                callback.onInitializationError("No hay usuario autenticado");
+            }
+        }
+    }
+    private void loadDataFromFirestoreWithCallback(DataInitializationCallback callback) {
         if (firestoreRepository == null) {
             if (callback != null) callback.onInitializationError("Repository not initialized");
             return;
         }
+
         String currentUserId = firestoreRepository.getCurrentUserId();
-        if (currentUserId == null) {
-            if (callback != null) callback.onInitializationError("Usuario no autenticado");
-            return;
-        }
-        Log.d("GenerarData", "Usuario autenticado: " + currentUserId + " - Iniciando con lienzo en blanco");
-        if (listaEtiquetas == null) {
-            listaEtiquetas = new ArrayList<>();
-        }
-        if (listaNotas == null) {
-            listaNotas = new ArrayList<>();
-        }
-        final boolean[] tagsLoaded = {false};
+        Log.d("GenerarData", "Cargando datos con callback para usuario: " + currentUserId);
         final boolean[] notesLoaded = {false};
+        final boolean[] tagsLoaded = {false};
+        //Cargar
+        firestoreRepository.getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
+            @Override
+            public void onSuccess(List<Note> notes) {
+                listaNotas = notes;
+                notesLoaded[0] = true;
+                Log.d("GenerarData", "Notas cargadas con callback: " + notes.size() + " notas para usuario " + currentUserId);
+                notifyDataChanged();
+                checkCallbackCompletion(callback, notesLoaded, tagsLoaded);
+            }
+            @Override
+            public void onError(String error) {
+                listaNotas = new ArrayList<>();
+                notesLoaded[0] = true;
+                Log.e("GenerarData", "Error cargando notas con callback: " + error);
+                notifyDataChanged();
+                checkCallbackCompletion(callback, notesLoaded, tagsLoaded);
+            }
+        });
+
         //CargarEtiquetas
         firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
             @Override
             public void onSuccess(List<Tag> tags) {
                 listaEtiquetas = tags;
                 tagsLoaded[0] = true;
-                Log.d("GenerarData", "Etiquetas cargadas para usuario " + currentUserId + ": " + tags.size());
-                checkLoadingComplete(callback, tagsLoaded, notesLoaded);
+                Log.d("GenerarData", "Etiquetas cargadas con callback: " + tags.size() + " etiquetas para usuario " + currentUserId);
+                notifyDataChanged();
+                checkCallbackCompletion(callback, notesLoaded, tagsLoaded);
             }
             @Override
             public void onError(String error) {
-                Log.e("GenerarData", "Error cargando etiquetas: " + error);
                 listaEtiquetas = new ArrayList<>();
                 tagsLoaded[0] = true;
-                checkLoadingComplete(callback, tagsLoaded, notesLoaded);
-            }
-        });
-        //CargarNotas
-        firestoreRepository.getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
-            @Override
-            public void onSuccess(List<Note> notes) {
-                listaNotas = notes;
-                notesLoaded[0] = true;
-                Log.d("GenerarData", "Notas cargadas para usuario " + currentUserId + ": " + notes.size());
-                checkLoadingComplete(callback, tagsLoaded, notesLoaded);
-            }
-            @Override
-            public void onError(String error) {
-                Log.e("GenerarData", "Error cargando notas: " + error);
-                listaNotas = new ArrayList<>();
-                notesLoaded[0] = true;
-                checkLoadingComplete(callback, tagsLoaded, notesLoaded);
+                Log.e("GenerarData", "Error cargando etiquetas con callback: " + error);
+                notifyDataChanged();
+                checkCallbackCompletion(callback, notesLoaded, tagsLoaded);
             }
         });
     }
-    private void checkLoadingComplete(DataInitializationCallback callback, boolean[] tagsLoaded, boolean[] notesLoaded) {
-        if (callback != null && tagsLoaded[0] && notesLoaded[0]) {
+    private void checkCallbackCompletion(DataInitializationCallback callback, boolean[] notesLoaded, boolean[] tagsLoaded) {
+        if (callback != null && notesLoaded[0] && tagsLoaded[0]) {
+            Log.d("GenerarData", "Datos completamente cargados - ejecutando callback");
+            notifyDataChanged();
             callback.onInitializationComplete();
+        }
+    }
+    public void forceUpdateAllFragments() {
+        Log.d("GenerarData", "Forzando actualización de todos los fragmentos");
+        notifyDataChanged();
+    }
+
+    public boolean hasDataLoaded() {
+        return (listaNotas != null && !listaNotas.isEmpty()) ||
+               (listaEtiquetas != null && !listaEtiquetas.isEmpty());
+    }
+
+    public void ensureDataLoaded(DataInitializationCallback callback) {
+        String currentUserId = firestoreRepository != null ? firestoreRepository.getCurrentUserId() : null;
+        if (currentUserId == null) {
+            if (callback != null) {
+                callback.onInitializationError("No hay usuario autenticado");
+            }
+            return;
+        }
+
+        if (hasDataLoaded()) {
+            Log.d("GenerarData", "Datos ya están cargados - ejecutando callback inmediatamente");
+            if (callback != null) {
+                callback.onInitializationComplete();
+            }
+            return;
+        }
+
+        Log.d("GenerarData", "No hay datos locales - cargando desde Firestore");
+        refreshDataForCurrentUser(callback);
+    }
+
+    public void loadFavorites(Context context) {
+    }
+
+    public void saveFavorites(Context context) {
+    }
+
+    public void onUserChanged(String newUserId) {
+        Log.d("GenerarData", "Usuario cambió a: " + newUserId);
+
+        //LimpiarDatos
+        clearUserData();
+        dataChangeListeners.clear();
+
+        //cargarDatosNuevoUsuario
+        if (newUserId != null && firestoreRepository != null) {
+            Log.d("GenerarData", "Cargando datos para nuevo usuario: " + newUserId);
+            loadDataFromFirestore();
+        } else {
+            Log.d("GenerarData", "Usuario deslogueado - manteniendo datos vacíos");
+            notifyDataChanged();
+        }
+    }
+    public void forceCompleteReinitialization(Context context) {
+        Log.d("GenerarData", "Forzando reinicialización completa del sistema");
+
+        clearUserData();
+        dataChangeListeners.clear();
+        if (firestoreRepository != null) {
+            firestoreRepository.cleanup();
+        }
+        firestoreRepository = new FirestoreRepository(context);
+        String currentUserId = firestoreRepository.getCurrentUserId();
+        if (currentUserId != null) {
+            Log.d("GenerarData", "Reinicializando para usuario: " + currentUserId);
+            loadDataFromFirestore();
         }
     }
 }

@@ -1,5 +1,4 @@
 package com.sgionotes.fragments;
-
 import android.content.Context;
 import android.os.Bundle;
 import androidx.fragment.app.Fragment;
@@ -19,37 +18,30 @@ import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Tag;
 import java.util.List;
 
-public class TagFragment extends Fragment {
-
+public class TagFragment extends Fragment implements GenerarData.DataChangeListener {
     private RecyclerView recyclerTags;
     private TagAdapter tagAdapter;
     private List<Tag> listaEtiquetas;
     private EditText txtTagNew;
     private ImageView btnAddTag;
+    private GenerarData generarData;
 
     public TagFragment() {
-        listaEtiquetas = GenerarData.getInstance().getListaEtiquetas();
     }
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-
         View vista = inflater.inflate(R.layout.fragment_tag, container, false);
-
         recyclerTags = vista.findViewById(R.id.recyclerTags);
         txtTagNew = vista.findViewById(R.id.txtTagNew);
         btnAddTag = vista.findViewById(R.id.btnAddTag);
-
-        // CargaFavoritos
-        GenerarData.getInstance().loadFavorites(getContext());
-
+        generarData = GenerarData.getInstance();
+        generarData.addDataChangeListener(this);
+        listaEtiquetas = generarData.getListaEtiquetas();
         recyclerTags.setLayoutManager(
                 new LinearLayoutManager(getContext())
         );
-
         btnAddTag.setOnClickListener(v -> agregarEtiqueta());
-
         txtTagNew.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_SEND) {
                 agregarEtiqueta();
@@ -57,35 +49,28 @@ public class TagFragment extends Fragment {
             }
             return false;
         });
-
         tagAdapter = new TagAdapter(listaEtiquetas);
         recyclerTags.setAdapter(tagAdapter);
-
         return vista;
-
     }
-
     private void agregarEtiqueta() {
         String texto = txtTagNew.getText().toString().trim();
         if (!texto.isEmpty()) {
             Tag nueva = new Tag(texto);
 
-            // Guardar primero en Firestore
+            //FirstFirestore
             GenerarData.getInstance().getFirestoreRepository()
                     .saveTag(nueva, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                         @Override
                         public void onSuccess() {
-                            // Solo agregar a la lista local si se guardó exitosamente en Firestore
                             listaEtiquetas.add(0, nueva);
                             tagAdapter.notifyItemInserted(0);
                             recyclerTags.scrollToPosition(0);
                             txtTagNew.setText("");
-
                             txtTagNew.clearFocus();
                             InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);
                             imm.hideSoftInputFromWindow(txtTagNew.getWindowToken(), 0);
                         }
-
                         @Override
                         public void onError(String error) {
                             Snackbar.make(recyclerTags, "Error al guardar etiqueta: " + error, Snackbar.LENGTH_SHORT).show();
@@ -95,10 +80,40 @@ public class TagFragment extends Fragment {
             Snackbar.make(recyclerTags, "La etiqueta no puede estar vacía", Snackbar.LENGTH_SHORT).show();
         }
     }
-
     @Override
     public void onPause() {
         super.onPause();
         GenerarData.getInstance().saveFavorites(getContext());
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (generarData != null) {
+            listaEtiquetas = generarData.getListaEtiquetas();
+            if (tagAdapter != null) {
+                tagAdapter.notifyDataSetChanged();
+            }
+        }
+    }
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (generarData != null) {
+            generarData.removeDataChangeListener(this);
+        }
+    }
+    @Override
+    public void onDataChanged() {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                if (generarData != null) {
+                    listaEtiquetas = generarData.getListaEtiquetas();
+                    if (tagAdapter != null) {
+                        tagAdapter.notifyDataSetChanged();
+                        android.util.Log.d("TagFragment", "Datos actualizados - mostrando " + listaEtiquetas.size() + " etiquetas");
+                    }
+                }
+            });
+        }
     }
 }

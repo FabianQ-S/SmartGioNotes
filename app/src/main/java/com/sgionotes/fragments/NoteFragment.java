@@ -1,9 +1,7 @@
 package com.sgionotes.fragments;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -23,12 +21,10 @@ import com.sgionotes.adapters.NoteAdapter;
 import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.Note;
 import com.sgionotes.models.Tag;
-
 import java.util.ArrayList;
 import java.util.List;
 
-public class NoteFragment extends Fragment {
-
+public class NoteFragment extends Fragment implements GenerarData.DataChangeListener {
     private RecyclerView recyclerNotas;
     private NoteAdapter notaAdapter;
     private List<Note> listaNotas;
@@ -36,48 +32,36 @@ public class NoteFragment extends Fragment {
     private String contenido;
     private int lastId;
     private FloatingActionButton floatingActionButton;
-
+    private GenerarData generarData;
     public NoteFragment() {
-        listaNotas = GenerarData.getInstance().getListaNotas();
-        // Ya no necesitamos calcular lastId porque Firestore maneja los IDs automáticamente
-        lastId = 0;
     }
-
     private ActivityResultLauncher<Intent> launchNewNoteActivity;
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
         launchNewNoteActivity = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
                     if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
                         Intent data = result.getData();
                         boolean esNueva = data.getBooleanExtra("esNueva", false);
-
                         if (esNueva) {
                             titulo = data.getStringExtra("titulo");
                             contenido = data.getStringExtra("contenido");
-
                             if (!titulo.isEmpty() || !contenido.isEmpty()) {
-                                // Crear nueva nota con el constructor correcto
                                 Note nuevaNota = new Note(titulo, contenido);
-
-                                // Guardar en Firestore primero
+                                //FirstFirestore
                                 GenerarData.getInstance().getFirestoreRepository()
                                         .saveNote(nuevaNota, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                                             @Override
                                             public void onSuccess() {
-                                                // Agregar a la lista local solo después de guardar exitosamente
                                                 listaNotas.add(0, nuevaNota);
                                                 notaAdapter.notifyItemInserted(0);
                                                 recyclerNotas.scrollToPosition(0);
                                             }
-
                                             @Override
                                             public void onError(String error) {
-                                                // Mostrar error si falla
+                                                //Error
                                                 if (getContext() != null) {
                                                     android.widget.Toast.makeText(getContext(),
                                                             "Error al guardar la nota: " + error,
@@ -96,10 +80,8 @@ public class NoteFragment extends Fragment {
                 }
         );
     }
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
         View vista = inflater.inflate(R.layout.fragment_note, container, false);
         recyclerNotas = vista.findViewById(R.id.recyclerNotas);
         floatingActionButton = vista.findViewById(R.id.addNota);
@@ -108,6 +90,9 @@ public class NoteFragment extends Fragment {
                 new StaggeredGridLayoutManager(2, StaggeredGridLayoutManager.VERTICAL)
         );
 
+        generarData = GenerarData.getInstance();
+        generarData.addDataChangeListener(this);
+        listaNotas = generarData.getListaNotas();
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
 
@@ -125,9 +110,7 @@ public class NoteFragment extends Fragment {
             }
             intent.putStringArrayListExtra("etiquetas", etiquetas);
             launchNewNoteActivity.launch(intent);
-
         });
-
         floatingActionButton.setOnClickListener(btn -> {
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
             intent.putExtra("esNueva", true);
@@ -136,5 +119,61 @@ public class NoteFragment extends Fragment {
 
         return vista;
     }
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (generarData != null) {
+            listaNotas = generarData.getListaNotas();
+            if (notaAdapter != null) {
+                notaAdapter.notifyDataSetChanged();
+            }
+        }
+    }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (generarData != null) {
+            generarData.removeDataChangeListener(this);
+        }
+    }
+
+    @Override
+    public void onDataChanged() {
+        if (getActivity() != null) {
+            getActivity().runOnUiThread(() -> {
+                if (generarData != null) {
+                    List<Note> updatedNotes = generarData.getListaNotas();
+                    if (updatedNotes != listaNotas) {
+                        listaNotas = updatedNotes;
+                        if (notaAdapter != null) {
+                            notaAdapter = new NoteAdapter(getContext(), listaNotas);
+                            recyclerNotas.setAdapter(notaAdapter);
+                            notaAdapter.setOnItemClickListener(nota -> {
+                                int position = listaNotas.indexOf(nota);
+                                Intent intent = new Intent(getContext(), DetailNoteActivity.class);
+                                intent.putExtra("id", String.valueOf(nota.getId()));
+                                intent.putExtra("titulo", nota.getTitulo());
+                                intent.putExtra("contenido", nota.getContenido());
+                                intent.putExtra("estaCreado", true);
+                                intent.putExtra("position", position);
+                                ArrayList<String> etiquetas = new ArrayList<>();
+                                for (Tag tag : nota.getEtiquetas()) {
+                                    etiquetas.add(tag.getEtiquetaDescripcion());
+                                }
+                                intent.putStringArrayListExtra("etiquetas", etiquetas);
+                                launchNewNoteActivity.launch(intent);
+                            });
+                        }
+                    } else {
+                        if (notaAdapter != null) {
+                            notaAdapter.notifyDataSetChanged();
+                        }
+                    }
+
+                    android.util.Log.d("NoteFragment", "Datos actualizados - mostrando " + listaNotas.size() + " notas");
+                }
+            });
+        }
+    }
 }

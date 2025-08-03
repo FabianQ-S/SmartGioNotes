@@ -33,9 +33,16 @@ public class LoginActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_login);
 
-        // InicializarFirebaseAuth
+        // InicializarFirebase
         mAuth = FirebaseAuth.getInstance();
         firestoreRepository = new FirestoreRepository(this);
+
+        FirebaseUser currentUser = mAuth.getCurrentUser();
+        if (currentUser != null) {
+            Log.d("LoginActivity", "Usuario ya autenticado: " + currentUser.getEmail());
+            loadUserDataAndNavigate();
+            return;
+        }
         registroExitoso = getIntent().getBooleanExtra("registro_exitoso", false);
         txtEmail = findViewById(R.id.txtEmail);
         txtPassword = findViewById(R.id.txtPassword);
@@ -45,6 +52,7 @@ public class LoginActivity extends AppCompatActivity {
         if (registroExitoso) {
             Snackbar.make(loginMain, "Cuenta creada. Inicia sesión con tus credenciales", Snackbar.LENGTH_LONG).show();
         }
+
         btnLogin.setOnClickListener(btn -> {
             String email = txtEmail.getText().toString().trim();
             String password = txtPassword.getText().toString().trim();
@@ -56,10 +64,11 @@ public class LoginActivity extends AppCompatActivity {
             btnLogin.setText("Iniciando sesión...");
             loginWithFirebase(email, password);
         });
+
         registerRedirect = findViewById(R.id.registerRedirect);
         registerRedirect.setOnClickListener(reg -> {
             Intent intent = new Intent(LoginActivity.this, RegisterActivity.class);
-            intent.putExtra("app_startup", false); // Indicar que NO es startup de la app
+            intent.putExtra("app_startup", false);
             startActivity(intent);
             finish();
         });
@@ -71,14 +80,12 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
     private void loginWithFirebase(String email, String password) {
-        //RestuararPrevio
-        mAuth.signOut();
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser user = mAuth.getCurrentUser();
                         if (user != null && user.getEmail() != null) {
-                            Log.d("LoginActivity", "Usuario autenticado: " + user.getEmail() + " UID: " + user.getUid());
+                            Log.d("LoginActivity", "Usuario autenticado exitosamente: " + user.getEmail() + " UID: " + user.getUid());
                             Snackbar.make(loginMain, "Bienvenido " + user.getEmail(), Snackbar.LENGTH_SHORT).show();
                             loadUserDataAndNavigate();
                         } else {
@@ -86,42 +93,37 @@ public class LoginActivity extends AppCompatActivity {
                             resetLoginButton();
                         }
                     } else {
+                        String errorMessage = task.getException() != null ? task.getException().getMessage() : "Error desconocido";
+                        Log.e("LoginActivity", "Error en login: " + errorMessage);
                         Snackbar.make(loginMain, "Usuario y/o contraseña inválidos", Snackbar.LENGTH_SHORT).show();
                         resetLoginButton();
                     }
                 });
     }
-    private void loadUserDataAndNavigate() {
-        android.os.Handler timeoutHandler = new android.os.Handler();
-        final boolean[] navigationCompleted = {false};
-        timeoutHandler.postDelayed(() -> {
-            if (!navigationCompleted[0]) {
-                navigationCompleted[0] = true;
-                navigateToMainActivity();
-            }
-        }, 1500);
 
+    private void loadUserDataAndNavigate() {
+        Log.d("LoginActivity", "Iniciando carga de datos del usuario");
         GenerarData generarData = GenerarData.getInstancia();
-        generarData.initializeWithContext(this);
-        generarData.createDefaultDataIfEmptyWithCallback(new GenerarData.DataInitializationCallback() {
-            @Override
-            public void onInitializationComplete() {
-                if (!navigationCompleted[0]) {
-                    navigationCompleted[0] = true;
-                    timeoutHandler.removeCallbacksAndMessages(null);
-                    navigateToMainActivity();
+        generarData.forceCompleteReinitialization(this);
+
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            generarData.refreshDataForCurrentUser(new GenerarData.DataInitializationCallback() {
+                @Override
+                public void onInitializationComplete() {
+                    Log.d("LoginActivity", "Datos del usuario cargados exitosamente - navegando a MainActivity");
+                    runOnUiThread(() -> {
+                        navigateToMainActivity();
+                    });
                 }
-            }
-            @Override
-            public void onInitializationError(String error) {
-                if (!navigationCompleted[0]) {
-                    navigationCompleted[0] = true;
-                    timeoutHandler.removeCallbacksAndMessages(null);
-                    Log.w("LoginActivity", "Error de inicialización: " + error);
-                    navigateToMainActivity();
+                @Override
+                public void onInitializationError(String error) {
+                    Log.e("LoginActivity", "Error cargando datos del usuario: " + error);
+                    runOnUiThread(() -> {
+                        navigateToMainActivity();
+                    });
                 }
-            }
-        });
+            });
+        }, 500); //Timer
     }
     private void resetLoginButton() {
         btnLogin.setEnabled(true);

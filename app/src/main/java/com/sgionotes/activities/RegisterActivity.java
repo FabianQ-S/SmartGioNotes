@@ -82,7 +82,6 @@ public class RegisterActivity extends AppCompatActivity {
                             btnRegister.setText("Crear Cuenta");
                         }
                     } else {
-                        //Error
                         String errorMessage = "Error al crear la cuenta";
                         if (task.getException() != null) {
                             String exception = task.getException().getMessage();
@@ -99,35 +98,9 @@ public class RegisterActivity extends AppCompatActivity {
                 });
     }
     private void loadUserDataAndNavigate() {
-        android.os.Handler timeoutHandler = new android.os.Handler();
-        final boolean[] navigationCompleted = {false};
-        timeoutHandler.postDelayed(() -> {
-            if (!navigationCompleted[0]) {
-                navigationCompleted[0] = true;
-                navigateToMainActivity();
-            }
-        }, 1500);
         com.sgionotes.models.GenerarData generarData = com.sgionotes.models.GenerarData.getInstancia();
-        generarData.initializeWithContext(this);
-        generarData.createDefaultDataIfEmptyWithCallback(new com.sgionotes.models.GenerarData.DataInitializationCallback() {
-            @Override
-            public void onInitializationComplete() {
-                if (!navigationCompleted[0]) {
-                    navigationCompleted[0] = true;
-                    timeoutHandler.removeCallbacksAndMessages(null);
-                    navigateToMainActivity();
-                }
-            }
-            @Override
-            public void onInitializationError(String error) {
-                if (!navigationCompleted[0]) {
-                    navigationCompleted[0] = true;
-                    timeoutHandler.removeCallbacksAndMessages(null);
-                    Log.w("RegisterActivity", "Error de inicialización: " + error);
-                    navigateToMainActivity();
-                }
-            }
-        });
+        generarData.refreshDataForCurrentUser();
+        navigateToMainActivity();
     }
     private void navigateToMainActivity() {
         Intent intent = new Intent(RegisterActivity.this, com.sgionotes.activities.MainActivity.class);
@@ -136,7 +109,6 @@ public class RegisterActivity extends AppCompatActivity {
     }
     private void saveUserProfile() {
         UserProfileManager profileManager = new UserProfileManager(this);
-
         String nombres = txtNombres.getText().toString().trim();
         String apellidos = txtApellidos.getText().toString().trim();
         String email = txtCorreo.getText().toString().trim();
