@@ -23,18 +23,15 @@ public class GenerarData {
         listaEtiquetas = new ArrayList<>();
         dataChangeListeners = new ArrayList<>();
     }
-
     public static GenerarData getInstancia() {
         if (instancia == null) {
             instancia = new GenerarData();
         }
         return instancia;
     }
-
     public static GenerarData getInstance() {
         return getInstancia();
     }
-
     //Metodos
     public void addDataChangeListener(DataChangeListener listener) {
         if (!dataChangeListeners.contains(listener)) {
@@ -60,7 +57,8 @@ public class GenerarData {
         if (firestoreRepository == null) return;
         String currentUserId = firestoreRepository.getCurrentUserId();
         Log.d("GenerarData", "Cargando datos para usuario: " + currentUserId);
-        firestoreRepository.getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
+        //IncluirNotasTotales
+        firestoreRepository.getAllNotesIncludingTrash(new FirestoreRepository.DataCallback<List<Note>>() {
             @Override
             public void onSuccess(List<Note> notes) {
                 listaNotas = notes;
@@ -74,7 +72,6 @@ public class GenerarData {
                 notifyDataChanged();
             }
         });
-        
         firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
             @Override
             public void onSuccess(List<Tag> tags) {
@@ -90,7 +87,6 @@ public class GenerarData {
             }
         });
     }
-
     public FirestoreRepository getFirestoreRepository() {
         return firestoreRepository;
     }
@@ -101,14 +97,12 @@ public class GenerarData {
         }
         return listaNotas;
     }
-
     public List<Tag> getListaEtiquetas() {
         if (listaEtiquetas == null) {
             listaEtiquetas = new ArrayList<>();
         }
         return listaEtiquetas;
     }
-
     public void addNota(Note nota) {
         if (listaNotas == null) {
             listaNotas = new ArrayList<>();
@@ -128,7 +122,6 @@ public class GenerarData {
             });
         }
     }
-
     public void addTag(Tag tag) {
         if (listaEtiquetas == null) {
             listaEtiquetas = new ArrayList<>();
@@ -182,13 +175,12 @@ public class GenerarData {
             if (callback != null) callback.onInitializationError("Repository not initialized");
             return;
         }
-
         String currentUserId = firestoreRepository.getCurrentUserId();
         Log.d("GenerarData", "Cargando datos con callback para usuario: " + currentUserId);
         final boolean[] notesLoaded = {false};
         final boolean[] tagsLoaded = {false};
-        //Cargar
-        firestoreRepository.getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
+
+        firestoreRepository.getAllNotesIncludingTrash(new FirestoreRepository.DataCallback<List<Note>>() {
             @Override
             public void onSuccess(List<Note> notes) {
                 listaNotas = notes;
@@ -206,8 +198,6 @@ public class GenerarData {
                 checkCallbackCompletion(callback, notesLoaded, tagsLoaded);
             }
         });
-
-        //CargarEtiquetas
         firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
             @Override
             public void onSuccess(List<Tag> tags) {
@@ -273,11 +263,9 @@ public class GenerarData {
 
     public void onUserChanged(String newUserId) {
         Log.d("GenerarData", "Usuario cambió a: " + newUserId);
-
         //LimpiarDatos
         clearUserData();
         dataChangeListeners.clear();
-
         //cargarDatosNuevoUsuario
         if (newUserId != null && firestoreRepository != null) {
             Log.d("GenerarData", "Cargando datos para nuevo usuario: " + newUserId);

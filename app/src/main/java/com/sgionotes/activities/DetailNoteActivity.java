@@ -37,6 +37,7 @@ public class DetailNoteActivity extends AppCompatActivity {
     private EditText etContenido;
     private LinearLayout detailNote;
     private boolean desdePapelera = false;
+    private boolean enviandoAPapelera = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -85,7 +86,6 @@ public class DetailNoteActivity extends AppCompatActivity {
             }
         }
         configurarVisibilidadBotones(esNueva, desdePapelera);
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detailNote), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -120,21 +120,24 @@ public class DetailNoteActivity extends AppCompatActivity {
         View fabEliminar = findViewById(R.id.fabEliminar);
         View fabUbicacion = findViewById(R.id.fabUbicacion);
 
+        View containerEliminar = (View) fabEliminar.getParent();
+        View containerUbicacion = (View) fabUbicacion.getParent();
+        View containerEtiquetas = (View) fabEtiquetas.getParent();
+
         if (esNueva) {
-            fabEtiquetas.setVisibility(View.VISIBLE);
-            fabEliminar.setVisibility(View.GONE);
-            fabUbicacion.setVisibility(View.GONE);
+            containerEtiquetas.setVisibility(View.VISIBLE);
+            containerEliminar.setVisibility(View.GONE);
+            containerUbicacion.setVisibility(View.VISIBLE);
         } else if (desdePapelera) {
-            fabEtiquetas.setVisibility(View.GONE);
-            fabEliminar.setVisibility(View.VISIBLE);
-            fabUbicacion.setVisibility(View.GONE);
+            containerEtiquetas.setVisibility(View.GONE);
+            containerEliminar.setVisibility(View.VISIBLE);
+            containerUbicacion.setVisibility(View.GONE);
         } else {
-            fabEtiquetas.setVisibility(View.VISIBLE);
-            fabEliminar.setVisibility(View.VISIBLE);
-            fabUbicacion.setVisibility(View.VISIBLE);
+            containerEtiquetas.setVisibility(View.VISIBLE);
+            containerEliminar.setVisibility(View.VISIBLE);
+            containerUbicacion.setVisibility(View.VISIBLE);
         }
     }
-
     private void mostrarDialogoEnviarPapelera() {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
                 .setMessage("La nota se enviará a papelera")
@@ -158,7 +161,6 @@ public class DetailNoteActivity extends AppCompatActivity {
         });
         alertDialog.show();
     }
-
     private void mostrarDialogoEliminarNotaIndividual(String noteId) {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
                 .setMessage("La nota se eliminará permanentemente")
@@ -182,12 +184,12 @@ public class DetailNoteActivity extends AppCompatActivity {
         });
         alertDialog.show();
     }
-
     private void enviarNotaAPapelera() {
         String noteId = txtIdNotaDetailNote.getText().toString();
         GenerarData generarData = GenerarData.getInstancia();
 
         if (noteId != null && !noteId.isEmpty()) {
+            enviandoAPapelera = true;
             guardarNotaAntesDePapelera();
 
             generarData.getFirestoreRepository().moveNoteToTrash(noteId, new FirestoreRepository.SimpleCallback() {
@@ -201,12 +203,12 @@ public class DetailNoteActivity extends AppCompatActivity {
                             intent.setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
                             startActivity(intent);
                             finish();
-                        }, 500); //delay
+                        }, 500);
                     });
                 }
-
                 @Override
                 public void onError(String error) {
+                    enviandoAPapelera = false;
                     runOnUiThread(() -> {
                         Toast.makeText(DetailNoteActivity.this, "Error al enviar a papelera: " + error, Toast.LENGTH_SHORT).show();
                     });
@@ -216,7 +218,6 @@ public class DetailNoteActivity extends AppCompatActivity {
             Toast.makeText(this, "Error: ID de nota no válido", Toast.LENGTH_SHORT).show();
         }
     }
-
     private void guardarNotaAntesDePapelera() {
         String id = txtIdNotaDetailNote.getText().toString();
         String titulo = etTitulo.getText().toString();
@@ -230,22 +231,18 @@ public class DetailNoteActivity extends AppCompatActivity {
         if (etiquetasNota != null) {
             notaActualizada.setTagIds(etiquetasNota);
         }
-
         GenerarData generarData = GenerarData.getInstancia();
         generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
             @Override
             public void onSuccess() {
             }
-
             @Override
             public void onError(String error) {
             }
         });
     }
-
     private void eliminarNotaPermanentemente(String noteId) {
         GenerarData generarData = GenerarData.getInstancia();
-
         if (noteId != null && !noteId.isEmpty()) {
             generarData.getFirestoreRepository().deleteNotePermanently(noteId, new FirestoreRepository.SimpleCallback() {
                 @Override
@@ -269,7 +266,7 @@ public class DetailNoteActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        if (!desdePapelera) {
+        if (!desdePapelera && !enviandoAPapelera) {
             guardarNota();
         }
     }
@@ -282,11 +279,9 @@ public class DetailNoteActivity extends AppCompatActivity {
         if (titulo.trim().isEmpty() && contenido.trim().isEmpty()) {
             return;
         }
-
         GenerarData generarData = GenerarData.getInstancia();
-
         if (id == null || id.isEmpty()) {
-            // Nueva nota
+            //NuevaNota
             Note nuevaNota = new Note(titulo, contenido);
             if (etiquetasNota != null) {
                 nuevaNota.setTagIds(etiquetasNota);
@@ -294,9 +289,7 @@ public class DetailNoteActivity extends AppCompatActivity {
             generarData.getFirestoreRepository().saveNote(nuevaNota, new FirestoreRepository.SimpleCallback() {
                 @Override
                 public void onSuccess() {
-                    //NotaGuardada
                 }
-
                 @Override
                 public void onError(String error) {
                     Toast.makeText(DetailNoteActivity.this, "Error al guardar nota: " + error, Toast.LENGTH_SHORT).show();
@@ -308,12 +301,10 @@ public class DetailNoteActivity extends AppCompatActivity {
             if (etiquetasNota != null) {
                 notaActualizada.setTagIds(etiquetasNota);
             }
-
             generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
                 @Override
                 public void onSuccess() {
                 }
-
                 @Override
                 public void onError(String error) {
                     Toast.makeText(DetailNoteActivity.this, "Error al actualizar nota: " + error, Toast.LENGTH_SHORT).show();
@@ -321,7 +312,6 @@ public class DetailNoteActivity extends AppCompatActivity {
             });
         }
     }
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {

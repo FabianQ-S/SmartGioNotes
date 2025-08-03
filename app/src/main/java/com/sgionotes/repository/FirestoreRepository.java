@@ -22,7 +22,7 @@ public class FirestoreRepository {
     private final FirebaseAuth mAuth;
     private Context context;
     private String currentUserId = null;
-    private FirebaseAuth.AuthStateListener authStateListener; // NUEVO: Listener de cambios de autenticación
+    private FirebaseAuth.AuthStateListener authStateListener;
     public FirestoreRepository(Context context) {
         db = FirebaseFirestore.getInstance();
         FirebaseFirestoreSettings settings = new FirebaseFirestoreSettings.Builder()
@@ -79,9 +79,7 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-
         Log.d(TAG, "Obteniendo tags para usuario: " + userId);
-        //ConsultaBasica
         db.collection(COLLECTION_USERS)
                 .document(userId)
                 .collection(COLLECTION_TAGS)
@@ -135,7 +133,6 @@ public class FirestoreRepository {
                     callback.onError("Error al obtener etiquetas favoritas: " + e.getMessage());
                 });
     }
-
     public void saveTag(Tag tag, SimpleCallback callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
@@ -238,39 +235,52 @@ public class FirestoreRepository {
                     callback.onError("Error al obtener etiqueta: " + e.getMessage());
                 });
     }
-    //Notas
-    public void getAllNotes(DataCallback<List<Note>> callback) {
+    public void getAllNotesIncludingTrash(DataCallback<List<Note>> callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
             callback.onError("Usuario no autenticado");
             return;
         }
 
-        Log.d(TAG, "Obteniendo notas para usuario: " + userId);
+        Log.d(TAG, "Obteniendo todas las notas (incluida papelera) para usuario: " + userId);
         db.collection(COLLECTION_USERS)
                 .document(userId)
                 .collection(COLLECTION_NOTES)
-                .get()
+                .get(com.google.firebase.firestore.Source.SERVER)
                 .addOnSuccessListener(queryDocumentSnapshots -> {
                     List<Note> notes = new ArrayList<>();
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Note note = document.toObject(Note.class);
                         note.setId(document.getId());
-
-                        //NotasPapelera
-                        if (!note.isTrash()) {
-                            notes.add(note);
-                        }
+                        Log.d(TAG, "Nota procesada: " + note.getId() + " isTrash: " + note.isTrash());
+                        notes.add(note); //AgregarNotas
                     }
-                    //Orden
                     notes.sort((n1, n2) -> Long.compare(n2.getTimestamp(), n1.getTimestamp()));
-                    Log.d(TAG, "Notas obtenidas exitosamente: " + notes.size() + " para usuario: " + userId);
+                    Log.d(TAG, "Todas las notas obtenidas exitosamente: " + notes.size() + " para usuario: " + userId);
                     callback.onSuccess(notes);
                 })
                 .addOnFailureListener(e -> {
-                    Log.e(TAG, "Error obteniendo notas para usuario: " + userId, e);
+                    Log.e(TAG, "Error obteniendo todas las notas para usuario: " + userId, e);
                     callback.onError("Error al obtener notas: " + e.getMessage());
                 });
+    }
+    public void getAllNotes(DataCallback<List<Note>> callback) {
+        getAllNotesIncludingTrash(new DataCallback<List<Note>>() {
+            @Override
+            public void onSuccess(List<Note> allNotes) {
+                List<Note> activeNotes = new ArrayList<>();
+                for (Note note : allNotes) {
+                    if (!note.isTrash()) {
+                        activeNotes.add(note);
+                    }
+                }
+                callback.onSuccess(activeNotes);
+            }
+            @Override
+            public void onError(String error) {
+                callback.onError(error);
+            }
+        });
     }
     public void getTrashNotes(DataCallback<List<Note>> callback) {
         String userId = getCurrentUserId();
@@ -373,6 +383,7 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado o ID de nota inválido");
             return;
         }
+        Log.d(TAG, "Actualizando estado de papelera para nota: " + noteId + " isTrash: " + isTrash);
         db.collection(COLLECTION_USERS)
                 .document(userId)
                 .collection(COLLECTION_NOTES)
@@ -392,7 +403,7 @@ public class FirestoreRepository {
                                     .document(noteId)
                                     .set(note)
                                     .addOnSuccessListener(aVoid -> {
-                                        Log.d(TAG, "Estado de papelera actualizado");
+                                        Log.d(TAG, "Estado de papelera actualizado exitosamente");
                                         callback.onSuccess();
                                     })
                                     .addOnFailureListener(e -> {

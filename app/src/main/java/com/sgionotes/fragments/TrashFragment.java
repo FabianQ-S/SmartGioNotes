@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class TrashFragment extends Fragment implements GenerarData.DataChangeListener {
-
     private RecyclerView recyclerTrashNotes;
     private NoteAdapter notaAdapter;
     private List<Note> listaNotasTrash;
@@ -64,26 +63,55 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
 
     private void mostrarDialogoEliminarNotaIndividual(Note nota) {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(requireContext())
-                .setMessage("La nota se eliminará permanentemente")
-                .setPositiveButton("Aceptar", (dialogInterface, which) -> {
-                    eliminarNotaIndividual(nota.getId());
+                .setMessage("Desea restaurar o eliminar permanentemente la nota?")
+                .setPositiveButton("Restaurar", (dialogInterface, which) -> {
+                    restaurarNota(nota.getId());
                 })
-                .setNegativeButton("Cancelar", null);
+                .setNegativeButton("Eliminar", (dialogInterface, which) -> {
+                    eliminarNotaIndividual(nota.getId());
+                });
 
         androidx.appcompat.app.AlertDialog alertDialog = dialog.create();
         alertDialog.setOnShowListener(dialogInterface -> {
             boolean isDarkMode = (getResources().getConfiguration().uiMode &
                     android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                     android.content.res.Configuration.UI_MODE_NIGHT_YES;
-            int buttonColor = isDarkMode ?
+            int restoreButtonColor = isDarkMode ?
                     getResources().getColor(R.color.purple, requireContext().getTheme()) :
                     getResources().getColor(R.color.cian, requireContext().getTheme());
+
+            //TemaEliminar
+            int deleteButtonColor = getResources().getColor(android.R.color.holo_red_dark, requireContext().getTheme());
             alertDialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
-                    .setTextColor(buttonColor);
+                    .setTextColor(restoreButtonColor);
             alertDialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEGATIVE)
-                    .setTextColor(buttonColor);
+                    .setTextColor(deleteButtonColor);
         });
         alertDialog.show();
+    }
+
+    private void restaurarNota(String noteId) {
+        generarData.getFirestoreRepository().restoreNoteFromTrash(noteId, new FirestoreRepository.SimpleCallback() {
+            @Override
+            public void onSuccess() {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        generarData.refreshDataForCurrentUser();
+                        Toast.makeText(getContext(), "Nota restaurada correctamente", Toast.LENGTH_SHORT).show();
+                        actualizarLista();
+                    });
+                }
+            }
+
+            @Override
+            public void onError(String error) {
+                if (getActivity() != null) {
+                    getActivity().runOnUiThread(() -> {
+                        Toast.makeText(getContext(), "Error al restaurar nota: " + error, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            }
+        });
     }
 
     private void eliminarNotaIndividual(String noteId) {
@@ -144,9 +172,9 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
             Toast.makeText(getContext(), "La papelera ya está vacía", Toast.LENGTH_SHORT).show();
             return;
         }
+
         int totalNotas = notasEnPapelera.size();
         int[] notasEliminadas = {0};
-
         for (Note nota : notasEnPapelera) {
             generarData.getFirestoreRepository().deleteNotePermanently(nota.getId(), new FirestoreRepository.SimpleCallback() {
                 @Override
@@ -155,6 +183,7 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
                     if (notasEliminadas[0] == totalNotas) {
                         if (getActivity() != null) {
                             getActivity().runOnUiThread(() -> {
+                                generarData.refreshDataForCurrentUser();
                                 Toast.makeText(getContext(), "Papelera vaciada correctamente", Toast.LENGTH_SHORT).show();
                                 actualizarLista();
                             });
@@ -177,6 +206,7 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
     private void actualizarLista() {
         cargarNotasPapelera();
         if (notaAdapter != null) {
+            notaAdapter.updateNotes(listaNotasTrash);
             notaAdapter.notifyDataSetChanged();
         }
     }
@@ -184,7 +214,9 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
     @Override
     public void onDataChanged() {
         if (getActivity() != null) {
-            getActivity().runOnUiThread(this::actualizarLista);
+            getActivity().runOnUiThread(() -> {
+                actualizarLista();
+            });
         }
     }
 
@@ -199,6 +231,8 @@ public class TrashFragment extends Fragment implements GenerarData.DataChangeLis
     @Override
     public void onResume() {
         super.onResume();
-        actualizarLista();
+        if (generarData != null) {
+            actualizarLista();
+        }
     }
 }

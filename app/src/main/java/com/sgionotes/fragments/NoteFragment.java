@@ -50,7 +50,6 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
                             contenido = data.getStringExtra("contenido");
                             if (!titulo.isEmpty() || !contenido.isEmpty()) {
                                 Note nuevaNota = new Note(titulo, contenido);
-                                //FirstFirestore
                                 GenerarData.getInstance().getFirestoreRepository()
                                         .saveNote(nuevaNota, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                                             @Override
@@ -92,7 +91,9 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
 
         generarData = GenerarData.getInstance();
         generarData.addDataChangeListener(this);
-        listaNotas = generarData.getListaNotas();
+
+        //NotasActivas
+        listaNotas = getActiveNotes();
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
 
@@ -116,20 +117,30 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
             intent.putExtra("esNueva", true);
             launchNewNoteActivity.launch(intent);
         });
-
         return vista;
+    }
+    private List<Note> getActiveNotes() {
+        List<Note> activeNotes = new ArrayList<>();
+        if (generarData != null) {
+            for (Note note : generarData.getListaNotas()) {
+                if (!note.isTrash()) {
+                    activeNotes.add(note);
+                }
+            }
+        }
+        return activeNotes;
     }
     @Override
     public void onResume() {
         super.onResume();
         if (generarData != null) {
-            listaNotas = generarData.getListaNotas();
+            listaNotas = getActiveNotes();
             if (notaAdapter != null) {
+                notaAdapter.updateNotes(listaNotas);
                 notaAdapter.notifyDataSetChanged();
             }
         }
     }
-
     @Override
     public void onDestroy() {
         super.onDestroy();
@@ -137,41 +148,17 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
             generarData.removeDataChangeListener(this);
         }
     }
-
     @Override
     public void onDataChanged() {
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 if (generarData != null) {
-                    List<Note> updatedNotes = generarData.getListaNotas();
-                    if (updatedNotes != listaNotas) {
-                        listaNotas = updatedNotes;
-                        if (notaAdapter != null) {
-                            notaAdapter = new NoteAdapter(getContext(), listaNotas);
-                            recyclerNotas.setAdapter(notaAdapter);
-                            notaAdapter.setOnItemClickListener(nota -> {
-                                int position = listaNotas.indexOf(nota);
-                                Intent intent = new Intent(getContext(), DetailNoteActivity.class);
-                                intent.putExtra("id", String.valueOf(nota.getId()));
-                                intent.putExtra("titulo", nota.getTitulo());
-                                intent.putExtra("contenido", nota.getContenido());
-                                intent.putExtra("estaCreado", true);
-                                intent.putExtra("position", position);
-                                ArrayList<String> etiquetas = new ArrayList<>();
-                                for (Tag tag : nota.getEtiquetas()) {
-                                    etiquetas.add(tag.getEtiquetaDescripcion());
-                                }
-                                intent.putStringArrayListExtra("etiquetas", etiquetas);
-                                launchNewNoteActivity.launch(intent);
-                            });
-                        }
-                    } else {
-                        if (notaAdapter != null) {
-                            notaAdapter.notifyDataSetChanged();
-                        }
+                    List<Note> updatedActiveNotes = getActiveNotes();
+                    listaNotas = updatedActiveNotes;
+                    if (notaAdapter != null) {
+                        notaAdapter.updateNotes(listaNotas);
+                        notaAdapter.notifyDataSetChanged();
                     }
-
-                    android.util.Log.d("NoteFragment", "Datos actualizados - mostrando " + listaNotas.size() + " notas");
                 }
             });
         }
