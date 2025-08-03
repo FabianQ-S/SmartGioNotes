@@ -16,7 +16,7 @@
         android:layout_height="0dp"
         android:visibility="gone"/>
 
-    <!-- Barra superior -->
+    <!-- BarraSuperior -->
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
@@ -27,8 +27,6 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
-        <!-- Titulo Nota con fondo mejorado -->
         <EditText
             android:id="@+id/etTitulo"
             style="@style/TEXT"
@@ -45,7 +43,7 @@
             android:textStyle="bold"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <!-- Divisor con degradado -->
+        <!-- Division -->
         <View
             android:id="@+id/divider"
             android:layout_width="0dp"
@@ -58,7 +56,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent" />
 
-        <!-- Detalle Nota -->
+        <!-- Detalles -->
         <EditText
             android:id="@+id/etmDetalleNota"
             style="@style/TEXT"
@@ -77,29 +75,73 @@
             app:layout_constraintTop_toBottomOf="@+id/divider"
             app:layout_constraintBottom_toBottomOf="parent" />
 
-        <FrameLayout
-            android:layout_width="56dp"
-            android:layout_height="56dp"
-            android:layout_marginBottom="32dp"
-            android:layout_marginEnd="24dp"
-            android:background="@drawable/fab_gradient_wrapper"
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:orientation="horizontal"
+            android:gravity="center"
             app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintEnd_toEndOf="parent">
 
-            <com.google.android.material.floatingactionbutton.FloatingActionButton
-                android:id="@+id/fabEtiquetas"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:srcCompat="@drawable/tag_icon"
-                app:tint="@color/white"
-                app:backgroundTint="@android:color/transparent"
-                app:elevation="0dp"
-                app:pressedTranslationZ="0dp"
-                android:contentDescription="Editar etiquetas" />
+            <!-- Recicler -->
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="40dp"
+                android:background="@drawable/fab_gradient_wrapper">
 
-        </FrameLayout>
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fabEliminar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:srcCompat="@drawable/ic_delete_24"
+                    app:tint="@color/white"
+                    app:backgroundTint="@android:color/transparent"
+                    app:elevation="0dp"
+                    app:pressedTranslationZ="0dp"
+                    android:contentDescription="Eliminar nota" />
 
+            </FrameLayout>
 
+            <!-- GPS -->
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:layout_marginEnd="40dp"
+                android:background="@drawable/fab_gradient_wrapper">
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fabUbicacion"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:srcCompat="@drawable/ic_my_location_24"
+                    app:tint="@color/white"
+                    app:backgroundTint="@android:color/transparent"
+                    app:elevation="0dp"
+                    app:pressedTranslationZ="0dp"
+                    android:contentDescription="Agregar ubicación" />
+
+            </FrameLayout>
+
+            <!-- Etiquetas -->
+            <FrameLayout
+                android:layout_width="56dp"
+                android:layout_height="56dp"
+                android:background="@drawable/fab_gradient_wrapper">
+
+                <com.google.android.material.floatingactionbutton.FloatingActionButton
+                    android:id="@+id/fabEtiquetas"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    app:srcCompat="@drawable/tag_icon"
+                    app:tint="@color/white"
+                    app:backgroundTint="@android:color/transparent"
+                    app:elevation="0dp"
+                    app:pressedTranslationZ="0dp"
+                    android:contentDescription="Editar etiquetas" />
+            </FrameLayout>
+        </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
-
 </LinearLayout>

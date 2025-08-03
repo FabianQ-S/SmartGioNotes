@@ -1,16 +1,20 @@
 package com.sgionotes.utils;
+
 import android.content.Context;
 import android.content.SharedPreferences;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.sgionotes.R;
 import com.sgionotes.models.UserProfile;
+
 public class UserProfileManager {
+
     private static final String PREFS_PREFIX = "user_profile_";
     private static final String KEY_NOMBRES = "nombres";
     private static final String KEY_APELLIDOS = "apellidos";
     private static final String KEY_EMAIL = "email";
     private static final String KEY_PROFILE_ICON = "profile_icon";
+
     private SharedPreferences prefs;
     private SharedPreferences.Editor editor;
     private Context context;
@@ -53,17 +57,21 @@ public class UserProfileManager {
 
     public UserProfile getUserProfile() {
         initializePrefs();
+
         FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
         String defaultEmail = currentUser != null ? (currentUser.getEmail() != null ? currentUser.getEmail() : "") : "";
+
         String nombres = prefs.getString(KEY_NOMBRES, "Usuario");
         String apellidos = prefs.getString(KEY_APELLIDOS, "");
         String email = prefs.getString(KEY_EMAIL, defaultEmail);
         int profileIcon = prefs.getInt(KEY_PROFILE_ICON, R.drawable.outline_account_circle_24);
+
         if (email.isEmpty() && currentUser != null && currentUser.getEmail() != null) {
             email = currentUser.getEmail();
             UserProfile profile = new UserProfile(nombres, apellidos, email, profileIcon);
             saveUserProfile(profile);
         }
+
         return new UserProfile(nombres, apellidos, email, profileIcon);
     }
 

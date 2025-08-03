@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="alternateColor">#fff</color>
+
     <!-- StartEndGradienteOscuro -->
     <color name="startGradient">#673ab7</color>
     <color name="endGradient">#ff7000</color>

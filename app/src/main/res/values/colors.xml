@@ -20,8 +20,8 @@
 
     <color name="alternateColor">#000</color>
 
-    <color name="startGradient">#00f3ff</color> <!-- inicio degradado celeste  -->
-    <color name="endGradient">#0042ff</color> <!-- final degradado celeste  -->
+    <color name="startGradient">#00f3ff</color> <!-- DegradadoCeleste  -->
+    <color name="endGradient">#0042ff</color>
 
     <!-- Papelera -->
     <color name="trashButtonColor">@color/cian</color>

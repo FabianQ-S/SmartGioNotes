@@ -112,7 +112,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
     private void saveUserDataToFirestore() {
-        // Método mantenido para compatibilidad
     }
     private void logoutUser() {
         GenerarData generarData = GenerarData.getInstancia();
@@ -174,9 +173,7 @@ public class MainActivity extends AppCompatActivity {
         ImageView imgEditIcon = headerView.findViewById(R.id.imgEditIcon);
         TextView txtUserName = headerView.findViewById(R.id.txtUserName);
         TextView txtUserEmail = headerView.findViewById(R.id.txtUserEmail);
-
         updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
-
         imgProfileIcon.setOnClickListener(v -> {
             imgEditIcon.setVisibility(View.VISIBLE);
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -192,7 +189,6 @@ public class MainActivity extends AppCompatActivity {
     private void updateUserProfileDisplay(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
         UserProfileManager profileManager = new UserProfileManager(this);
         UserProfile profile = profileManager.getUserProfile();
-
         imgProfileIcon.setImageResource(profile.getProfileIcon());
         txtUserName.setText(profile.getFullName());
         txtUserEmail.setText(profile.getEmail());
