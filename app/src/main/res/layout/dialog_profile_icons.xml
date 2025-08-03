@@ -3,16 +3,26 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp"
-    android:gravity="center">
+    android:gravity="center"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Selecciona tu icono de perfil"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="24dp"
+        android:textColor="?android:attr/textColorPrimary" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerProfileIcons"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:paddingStart="24dp"
-        android:paddingEnd="24dp"
+        android:overScrollMode="never"
         android:clipToPadding="false"
-        android:minHeight="350dp" />
+        android:padding="8dp" />
 
 </LinearLayout>

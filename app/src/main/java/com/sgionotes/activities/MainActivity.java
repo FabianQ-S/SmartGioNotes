@@ -55,7 +55,6 @@ public class MainActivity extends AppCompatActivity {
         mAuth = FirebaseAuth.getInstance();
 
         if (mAuth.getCurrentUser() == null) {
-            // Si no hay usuario autenticado, redirigir al login
             Intent intent = new Intent(MainActivity.this, LoginActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
@@ -64,14 +63,11 @@ public class MainActivity extends AppCompatActivity {
         }
         firestoreRepository = new FirestoreRepository(this);
         setupToolbarAndNavigation();
-
         GenerarData generarData = GenerarData.getInstancia();
         generarData.clearUserData();
         generarData.initializeWithContext(this);
-
         loadFragment(notes);
         setupUserProfile();
-
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
@@ -178,35 +174,32 @@ public class MainActivity extends AppCompatActivity {
         ImageView imgEditIcon = headerView.findViewById(R.id.imgEditIcon);
         TextView txtUserName = headerView.findViewById(R.id.txtUserName);
         TextView txtUserEmail = headerView.findViewById(R.id.txtUserEmail);
-        loadUserProfile(imgProfileIcon, txtUserName, txtUserEmail);
+
+        updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
+
         imgProfileIcon.setOnClickListener(v -> {
             imgEditIcon.setVisibility(View.VISIBLE);
-
-            // OcultarAutomáticamente
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 imgEditIcon.setVisibility(View.GONE);
             }, 2000);
         });
 
-        // Editar
         imgEditIcon.setOnClickListener(v -> showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
         headerView.findViewById(R.id.cardProfileIcon).setOnClickListener(v ->
                 showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
     }
 
-    private void loadUserProfile(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
+    private void updateUserProfileDisplay(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
         UserProfileManager profileManager = new UserProfileManager(this);
         UserProfile profile = profileManager.getUserProfile();
+
         imgProfileIcon.setImageResource(profile.getProfileIcon());
         txtUserName.setText(profile.getFullName());
-        String email = profile.getEmail();
+        txtUserEmail.setText(profile.getEmail());
+    }
 
-        if (email.isEmpty() && mAuth.getCurrentUser() != null) {
-            email = mAuth.getCurrentUser().getEmail();
-            profile.setEmail(email);
-            profileManager.saveUserProfile(profile);
-        }
-        txtUserEmail.setText(email);
+    private void loadUserProfile(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
+        updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
     }
 
     private void showProfileIconDialog(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
@@ -225,6 +218,12 @@ public class MainActivity extends AppCompatActivity {
         Log.d("MainActivity", "MainActivity resumida - verificando datos del usuario");
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
+            View headerView = navigationView.getHeaderView(0);
+            ImageView imgProfileIcon = headerView.findViewById(R.id.imgProfileIcon);
+            TextView txtUserName = headerView.findViewById(R.id.txtUserName);
+            TextView txtUserEmail = headerView.findViewById(R.id.txtUserEmail);
+            updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
+
             GenerarData generarData = GenerarData.getInstancia();
             Log.d("MainActivity", "Forzando reinicialización completa en onResume para usuario: " + currentUser.getUid());
             generarData.forceCompleteReinitialization(this);
