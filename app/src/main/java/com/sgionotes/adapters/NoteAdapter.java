@@ -19,15 +19,19 @@ import com.sgionotes.models.Note;
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder> {
+
     private Context context;
     private List<Note> listaNotas;
     private OnItemClickListener listener;
+
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }
+
     public interface OnItemClickListener {
         void onItemClick(Note nota);
     }
+
     public NoteAdapter(Context context, List<Note> listaNotas) {
         this.context = context;
         this.listaNotas = listaNotas;
@@ -64,6 +68,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
                 listener.onItemClick(nota);
             }
         });
+
     }
 
     @Override
@@ -80,6 +85,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         TextView txtTitulo;
         TextView txtContenido;
         ChipGroup chipGroup;
+
         public NotaViewHolder(View itemView) {
             super(itemView);
             txtIdNota = itemView.findViewById(R.id.txtIdNota);

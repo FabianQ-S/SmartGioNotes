@@ -12,27 +12,87 @@
     <androidx.appcompat.widget.Toolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
+        android:layout_height="32dp"
         android:background="@android:color/transparent"
-        app:navigationIcon="?attr/homeAsUpIndicator" />
+        app:navigationIcon="?attr/homeAsUpIndicator"
+        android:gravity="center" />
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewTags"
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:nestedScrollingEnabled="false" />
+        android:text="Agregar etiquetas"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        style="@style/TEXT"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="12dp" />
 
     <View
         android:layout_width="match_parent"
         android:layout_height="2dp"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
+        android:layout_marginBottom="12dp"
         android:background="@drawable/divider_gradient" />
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical" />
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="16dp">
+
+            <!-- Favoritas -->
+            <TextView
+                android:id="@+id/tvFavoritesHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="⭐ Etiquetas Favoritas"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                style="@style/TEXT"
+                android:layout_marginBottom="12dp"
+                android:visibility="gone" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupFavorites"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                app:chipSpacing="6dp"
+                app:chipSpacingHorizontal="6dp"
+                app:chipSpacingVertical="4dp"
+                app:singleSelection="false"
+                app:selectionRequired="false" />
+
+            <TextView
+                android:id="@+id/tvAllTagsHeader"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🏷️ Todas las Etiquetas"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                style="@style/TEXT"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/chipGroupAllTags"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:chipSpacing="6dp"
+                app:chipSpacingHorizontal="6dp"
+                app:chipSpacingVertical="4dp"
+                app:singleSelection="false"
+                app:selectionRequired="false" />
+
+        </LinearLayout>
+    </ScrollView>
 
 </LinearLayout>

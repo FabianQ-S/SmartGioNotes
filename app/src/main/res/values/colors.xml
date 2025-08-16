@@ -20,17 +20,21 @@
 
     <color name="alternateColor">#000</color>
 
-    <color name="startGradient">#00f3ff</color> <!-- DegradadoCeleste  -->
+    <color name="startGradient">#4DD0E1</color>
     <color name="endGradient">#0042ff</color>
 
     <!-- Papelera -->
     <color name="trashButtonColor">@color/cian</color>
 
     <!-- ChipsColors -->
-    <color name="chipBackground">#E3F2FD</color>
-    <color name="chipText">#1565C0</color>
+    <color name="chipBackground">#F0F0F0</color>
+    <color name="chipText">#424242</color>
     <color name="chipBackgroundColor">@color/chipBackground</color>
-    <color name="chipStrokeColor">#BBDEFB</color>
+    <color name="chipStrokeColor">#BDBDBD</color>
+
+    <!-- FiltrerColor -->
+    <color name="chipSelectedBackground">#B3E5FC</color>
+    <color name="chipSelectedText">#01579B</color>
 
     <!-- PopupColors -->
     <color name="popupMenuBackgroundColor">#D1C4E9</color>

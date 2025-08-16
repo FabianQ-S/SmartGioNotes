@@ -19,9 +19,8 @@
         android:orientation="vertical"
         android:padding="15dp"
         android:gravity="center_horizontal"
-        android:background="@drawable/bg_note_border">  <!-- set gradient border here -->
+        android:background="@drawable/bg_note_border">
 
-        <!-- ID oculto para la nota -->
         <TextView
             android:id="@+id/txtIdNota"
             android:layout_width="0dp"
@@ -47,7 +46,7 @@
             android:textSize="16sp"
             android:layout_marginBottom="4dp" />
 
-        <!-- Etiquetas como Chips -->
+        <!-- Etiquetas -->
         <com.google.android.material.chip.ChipGroup
             android:id="@+id/chipGroupEtiquetas"
             android:layout_width="match_parent"

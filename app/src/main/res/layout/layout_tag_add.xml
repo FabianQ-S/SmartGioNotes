@@ -47,7 +47,5 @@
             android:src="@drawable/outline_add_24"
             app:tint="@color/alternateColor"
             android:layout_marginStart="8dp"/>
-
     </LinearLayout>
-
 </androidx.cardview.widget.CardView>

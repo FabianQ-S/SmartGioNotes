@@ -2,23 +2,27 @@ package com.sgionotes.activities;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Toast;
+import android.view.View;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.sgionotes.R;
-import com.sgionotes.adapters.EditableTagAdapter;
 import com.sgionotes.models.Tag;
 import com.sgionotes.models.GenerarData;
+import com.sgionotes.repository.FirestoreRepository;
 import java.util.ArrayList;
 import java.util.List;
 
-public class TagsActivity extends AppCompatActivity implements EditableTagAdapter.OnTagActionListener {
+public class TagsActivity extends AppCompatActivity {
 
-    private RecyclerView recyclerViewTags;
-    private EditableTagAdapter tagAdapter;
-    private List<Tag> tagsNota;
+    private ChipGroup chipGroupFavorites;
+    private ChipGroup chipGroupAllTags;
+    private TextView tvFavoritesHeader;
+    private TextView tvAllTagsHeader;
+    private List<Tag> allTags;
+    private ArrayList<String> selectedTagsFromNote;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -27,65 +31,135 @@ public class TagsActivity extends AppCompatActivity implements EditableTagAdapte
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setTitle("Edición de Etiquetas");
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
-        recyclerViewTags = findViewById(R.id.recyclerViewTags);
-        recyclerViewTags.setLayoutManager(new LinearLayoutManager(this));
+        initializeViews();
 
         Intent intent = getIntent();
         if (intent != null) {
-            ArrayList<String> tagsTexto = intent.getStringArrayListExtra("tags");
-            if (tagsTexto != null) {
-                tagsNota = new ArrayList<>();
-                for (String tagTexto : tagsTexto) {
-                    tagsNota.add(new Tag(tagTexto));
-                }
-                GenerarData.getInstance().loadFavorites(this);
-                setupRecyclerView();
+            selectedTagsFromNote = intent.getStringArrayListExtra("tags");
+            if (selectedTagsFromNote == null) {
+                selectedTagsFromNote = new ArrayList<>();
             }
         }
+
+        loadAllTags();
     }
 
-    @Override
-    protected void onPause() {
-        super.onPause();
-        GenerarData.getInstance().saveFavorites(this);
+    private void initializeViews() {
+        chipGroupFavorites = findViewById(R.id.chipGroupFavorites);
+        chipGroupAllTags = findViewById(R.id.chipGroupAllTags);
+        tvFavoritesHeader = findViewById(R.id.tvFavoritesHeader);
+        tvAllTagsHeader = findViewById(R.id.tvAllTagsHeader);
     }
 
-    private void setupRecyclerView() {
-        tagAdapter = new EditableTagAdapter(this, tagsNota, this);
-        recyclerViewTags.setAdapter(tagAdapter);
+    private void loadAllTags() {
+        GenerarData generarData = GenerarData.getInstance();
+        generarData.getFirestoreRepository().getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
+            @Override
+            public void onSuccess(List<Tag> tags) {
+                allTags = tags;
+                organizeAndDisplayTags();
+            }
+
+            @Override
+            public void onError(String error) {
+            }
+        });
     }
 
-    @Override
-    public void onTagEdited(int position, String newText) {
-        if (position >= 0 && position < tagsNota.size()) {
-            tagsNota.get(position).setEtiquetaDescripcion(newText);
-            tagAdapter.notifyItemChanged(position);
-            Toast.makeText(this, "Etiqueta actualizada", Toast.LENGTH_SHORT).show();
+    private void organizeAndDisplayTags() {
+        if (allTags == null || allTags.isEmpty()) {
+            tvFavoritesHeader.setVisibility(View.GONE);
+            tvAllTagsHeader.setVisibility(View.GONE);
+            return;
+        }
+
+        List<Tag> favoriteTags = new ArrayList<>();
+        List<Tag> regularTags = new ArrayList<>();
+
+        for (Tag tag : allTags) {
+            if (tag.isFavorite()) {
+                favoriteTags.add(tag);
+            } else {
+                regularTags.add(tag);
+            }
+        }
+
+        // Ordenamiento
+        favoriteTags.sort((t1, t2) -> Long.compare(t2.getFavoriteTimestamp(), t1.getFavoriteTimestamp()));
+        regularTags.sort((t1, t2) -> t1.getEtiquetaDescripcion().compareToIgnoreCase(t2.getEtiquetaDescripcion()));
+
+        if (!favoriteTags.isEmpty()) {
+            tvFavoritesHeader.setVisibility(View.VISIBLE);
+            populateChipGroup(chipGroupFavorites, favoriteTags, true);
+        } else {
+            tvFavoritesHeader.setVisibility(View.GONE);
+        }
+
+        if (!regularTags.isEmpty()) {
+            tvAllTagsHeader.setVisibility(View.VISIBLE);
+            populateChipGroup(chipGroupAllTags, regularTags, false);
+        } else {
+            tvAllTagsHeader.setVisibility(View.GONE);
         }
     }
 
-    @Override
-    public void onTagDeleted(int position) {
-        if (position >= 0 && position < tagsNota.size()) {
-            String tagName = tagsNota.get(position).getEtiquetaDescripcion();
-            tagsNota.remove(position);
-            tagAdapter.notifyItemRemoved(position);
-            Toast.makeText(this, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+    private void populateChipGroup(ChipGroup chipGroup, List<Tag> tags, boolean isFavoriteGroup) {
+        chipGroup.removeAllViews();
+
+        for (Tag tag : tags) {
+            Chip chip = createChip(tag, isFavoriteGroup);
+            chipGroup.addView(chip);
         }
     }
 
-    @Override
-    public void onTagAddedToFavorites(int position) {
-        if (position >= 0 && position < tagsNota.size()) {
-            String tagName = tagsNota.get(position).getEtiquetaDescripcion();
-            Toast.makeText(this, "'" + tagName + "' añadida a favoritas", Toast.LENGTH_SHORT).show();
+    private Chip createChip(Tag tag, boolean isFavorite) {
+        Chip chip = new Chip(this);
+        chip.setText(tag.getEtiquetaDescripcion());
+        chip.setTextSize(14f);
+        chip.setChipBackgroundColorResource(R.color.chipBackground);
+        chip.setTextColor(getResources().getColor(R.color.chipText, getTheme()));
+        chip.setChipStrokeColorResource(R.color.chipStrokeColor);
+        chip.setChipStrokeWidth(2f);
+
+        boolean isSelected = selectedTagsFromNote.contains(tag.getEtiquetaDescripcion());
+        chip.setCheckable(true);
+        chip.setChecked(isSelected);
+
+        if (isSelected) {
+            chip.setChipBackgroundColorResource(R.color.chipSelectedBackground);
+            chip.setTextColor(getResources().getColor(R.color.chipSelectedText, getTheme()));
+            chip.setCheckedIconVisible(true);
+            chip.setCheckedIconResource(android.R.drawable.ic_menu_save);
+            chip.setCheckedIconTint(getResources().getColorStateList(R.color.chipSelectedText, getTheme()));
+        } else {
+            chip.setCheckedIconVisible(false);
         }
+        chip.setCloseIconVisible(false);
+        chip.setClickable(true);
+        chip.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                chip.setChipBackgroundColorResource(R.color.chipSelectedBackground);
+                chip.setTextColor(getResources().getColor(R.color.chipSelectedText, getTheme()));
+                chip.setCheckedIconVisible(true);
+                chip.setCheckedIconTint(getResources().getColorStateList(R.color.chipSelectedText, getTheme()));
+                if (!selectedTagsFromNote.contains(tag.getEtiquetaDescripcion())) {
+                    selectedTagsFromNote.add(tag.getEtiquetaDescripcion());
+                }
+            } else {
+                // Deseleccionar
+                chip.setChipBackgroundColorResource(R.color.chipBackground);
+                chip.setTextColor(getResources().getColor(R.color.chipText, getTheme()));
+                chip.setCheckedIconVisible(false);
+                selectedTagsFromNote.remove(tag.getEtiquetaDescripcion());
+            }
+        });
+
+        return chip;
     }
 
     @Override

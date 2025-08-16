@@ -10,10 +10,12 @@
     <color name="trashButtonColor">@color/startGradient</color>
 
     <!-- ChipsColors -->
-    <color name="chipBackground">#4A148C</color>
-    <color name="chipText">#E1BEE7</color>
+    <color name="chipBackground">#424242</color>
+    <color name="chipText">#E0E0E0</color>
     <color name="chipBackgroundColor">@color/chipBackground</color>
-    <color name="chipStrokeColor">#7B1FA2</color>
+    <color name="chipStrokeColor">#616161</color>
+    <color name="chipSelectedBackground">#7E57C2</color>
+    <color name="chipSelectedText">#F3E5F5</color>
 
     <!-- PopupColors -->
     <color name="popupMenuBackgroundColor">#3E2723</color>
