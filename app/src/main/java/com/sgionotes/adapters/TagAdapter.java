@@ -40,7 +40,16 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull TagViewHolder holder, int position) {
+        // Validación de índice para prevenir crashes
+        if (position < 0 || position >= listaTags.size()) {
+            return;
+        }
+
         Tag tag = listaTags.get(position);
+        if (tag == null) {
+            return;
+        }
+
         holder.etTagText.setText(tag.getDisplayText());
 
         // VerificacionDeFavorito
@@ -75,6 +84,11 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
     }
 
     private void showPopupMenu(View anchor, int position) {
+        // Validación adicional para prevenir crashes
+        if (position < 0 || position >= listaTags.size()) {
+            return;
+        }
+
         View popupView = LayoutInflater.from(context).inflate(R.layout.popup_menu_tag, null, false);
 
         // PopupMedir
@@ -89,7 +103,18 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         LinearLayout menuEdit = popupView.findViewById(R.id.menuEdit);
         LinearLayout menuDelete = popupView.findViewById(R.id.menuDelete);
 
+        // Verificar que el índice sigue siendo válido
+        if (position >= listaTags.size()) {
+            popupWindow.dismiss();
+            return;
+        }
+
         Tag currentTag = listaTags.get(position);
+        if (currentTag == null) {
+            popupWindow.dismiss();
+            return;
+        }
+
         TextView favoriteText = menuAddFavorite.findViewById(android.R.id.text1);
         if (favoriteText == null) {
             favoriteText = (TextView) ((LinearLayout) menuAddFavorite).getChildAt(1);
@@ -135,36 +160,40 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         });
 
         menuEdit.setOnClickListener(v -> {
-            enableEditing(position);
+            // Verificar nuevamente que el índice es válido antes de editar
+            if (position < listaTags.size()) {
+                enableEditing(position);
+            }
             popupWindow.dismiss();
         });
 
         menuDelete.setOnClickListener(v -> {
             String tagName = currentTag.getEtiquetaDescripcion();
+            String tagId = currentTag.getId();
 
-            // Eliminar de Firestore primero
-            if (currentTag.getId() != null && !currentTag.getId().isEmpty()) {
-                GenerarData.getInstance().getFirestoreRepository()
-                        .deleteTag(currentTag.getId(), new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
-                            @Override
-                            public void onSuccess() {
-                                // Eliminar de la lista local solo si se eliminó exitosamente de Firestore
-                                listaTags.remove(position);
-                                notifyItemRemoved(position);
-                                Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
-                            }
-
-                            @Override
-                            public void onError(String error) {
-                                Toast.makeText(context, "Error al eliminar etiqueta: " + error, Toast.LENGTH_SHORT).show();
-                            }
-                        });
-            } else {
-                // Si no tiene ID, eliminar solo localmente
-                listaTags.remove(position);
-                notifyItemRemoved(position);
-                Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+            // Validar que tenemos un ID válido antes de eliminar
+            if (tagId == null || tagId.isEmpty()) {
+                Toast.makeText(context, "Error: ID de etiqueta inválido", Toast.LENGTH_SHORT).show();
+                popupWindow.dismiss();
+                return;
             }
+
+            // Usar el método seguro de GenerarData para eliminar etiquetas
+            GenerarData.getInstance().removeTag(tagId,
+                new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                    @Override
+                    public void onSuccess() {
+                        // La eliminación local ya se maneja en GenerarData.removeTag()
+                        Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
+                        // Actualizar la lista local para reflejar los cambios de forma segura
+                        updateTagsListSafely();
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Toast.makeText(context, "Error al eliminar etiqueta: " + error, Toast.LENGTH_SHORT).show();
+                    }
+                });
             popupWindow.dismiss();
         });
 
@@ -206,6 +235,38 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
                 }
             }
         }, 100);
+    }
+
+    // Método para actualizar la lista de etiquetas después de cambios
+    public void updateTagsList() {
+        this.listaTags = GenerarData.getInstance().getListaEtiquetas();
+        sortTags();
+        notifyDataSetChanged();
+    }
+
+    // Método seguro para actualizar la lista después de eliminaciones
+    private void updateTagsListSafely() {
+        try {
+            List<Tag> newTagsList = GenerarData.getInstance().getListaEtiquetas();
+            if (newTagsList != null) {
+                this.listaTags = newTagsList;
+                sortTags();
+                notifyDataSetChanged();
+            }
+        } catch (Exception e) {
+            // En caso de error, simplemente recargar desde GenerarData
+            android.os.Handler handler = new android.os.Handler();
+            handler.postDelayed(() -> {
+                try {
+                    this.listaTags = GenerarData.getInstance().getListaEtiquetas();
+                    sortTags();
+                    notifyDataSetChanged();
+                } catch (Exception ex) {
+                    // Si aún hay problemas, mostrar mensaje de error
+                    Toast.makeText(context, "Error actualizando lista de etiquetas", Toast.LENGTH_SHORT).show();
+                }
+            }, 100);
+        }
     }
 
     private void finishEditing(TagViewHolder holder, int position) {

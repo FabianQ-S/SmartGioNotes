@@ -10,13 +10,16 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
-import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import com.google.android.material.chip.Chip;
+import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.sgionotes.R;
@@ -27,17 +30,33 @@ import com.sgionotes.repository.FirestoreRepository;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class DetailNoteActivity extends AppCompatActivity {
 
     private ArrayList<String> etiquetasNota;
+    private ArrayList<String> etiquetasNotaIds; // Para guardar los IDs reales
     private TextView txtIdNotaDetailNote;
     private EditText etTitulo;
     private EditText etContenido;
     private LinearLayout detailNote;
+    private ChipGroup chipGroupSelectedTags;
     private boolean desdePapelera = false;
     private boolean enviandoAPapelera = false;
+
+    private final ActivityResultLauncher<Intent> tagsActivityLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    ArrayList<String> selectedTags = result.getData().getStringArrayListExtra("selectedTags");
+                    if (selectedTags != null) {
+                        etiquetasNota = selectedTags;
+                        // Necesitamos convertir nombres a IDs para guardar
+                        convertTagNamesToIds(selectedTags);
+                        updateSelectedTagsDisplay();
+                    }
+                }
+            }
+    );
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,6 +75,11 @@ public class DetailNoteActivity extends AppCompatActivity {
         etTitulo = findViewById(R.id.etTitulo);
         etContenido = findViewById(R.id.etmDetalleNota);
         detailNote = findViewById(R.id.detailNote);
+        chipGroupSelectedTags = findViewById(R.id.chipGroupSelectedTags);
+
+        // Inicializar listas para evitar null pointer
+        etiquetasNota = new ArrayList<>();
+        etiquetasNotaIds = new ArrayList<>();
 
         boolean esNueva = getIntent().getBooleanExtra("esNueva", false);
 
@@ -65,11 +89,19 @@ public class DetailNoteActivity extends AppCompatActivity {
             String titulo = intent.getStringExtra("titulo");
             String contenido = intent.getStringExtra("contenido");
             desdePapelera = intent.getBooleanExtra("desdePapelera", false);
-            etiquetasNota = intent.getStringArrayListExtra("etiquetas");
+            ArrayList<String> intentTagIds = intent.getStringArrayListExtra("etiquetas");
 
             txtIdNotaDetailNote.setText(id);
             etTitulo.setText(titulo);
             etContenido.setText(contenido);
+
+            // Cargar etiquetas si existen
+            if (intentTagIds != null && !intentTagIds.isEmpty()) {
+                etiquetasNotaIds = new ArrayList<>(intentTagIds);
+                loadTagNamesFromIds(etiquetasNotaIds);
+            } else {
+                updateSelectedTagsDisplay();
+            }
 
             if (desdePapelera) {
                 etTitulo.setFocusable(false);
@@ -77,14 +109,15 @@ public class DetailNoteActivity extends AppCompatActivity {
                 etContenido.setFocusable(false);
                 etContenido.setClickable(true);
 
-                View.OnClickListener mostrarMensaje = v -> {
-                    mostrarDialogoEliminarNotaIndividual(id);
-                };
+                View.OnClickListener mostrarMensaje = v -> mostrarDialogoEliminarNotaIndividual(id);
 
                 etTitulo.setOnClickListener(mostrarMensaje);
                 etContenido.setOnClickListener(mostrarMensaje);
             }
+        } else {
+            updateSelectedTagsDisplay();
         }
+
         configurarVisibilidadBotones(esNueva, desdePapelera);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detailNote), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -97,7 +130,7 @@ public class DetailNoteActivity extends AppCompatActivity {
                 if (etiquetasNota != null) {
                     intentTags.putStringArrayListExtra("tags", etiquetasNota);
                 }
-                startActivity(intentTags);
+                tagsActivityLauncher.launch(intentTags);
             } else {
                 Snackbar.make(detailNote, "No es posible editar etiquetas desde la papelera", Snackbar.LENGTH_LONG).show();
             }
@@ -111,10 +144,146 @@ public class DetailNoteActivity extends AppCompatActivity {
             }
         });
 
-        findViewById(R.id.fabUbicacion).setOnClickListener(v -> {
-            Toast.makeText(this, "Función GPS próximamente", Toast.LENGTH_SHORT).show();
+        findViewById(R.id.fabUbicacion).setOnClickListener(v ->
+            Toast.makeText(this, "Función GPS próximamente", Toast.LENGTH_SHORT).show());
+    }
+
+    private void updateSelectedTagsDisplay() {
+        chipGroupSelectedTags.removeAllViews();
+
+        if (etiquetasNota != null && !etiquetasNota.isEmpty()) {
+            chipGroupSelectedTags.setVisibility(View.VISIBLE);
+
+            for (String tagName : etiquetasNota) {
+                Chip chip = createFilterChip(tagName);
+                chipGroupSelectedTags.addView(chip);
+            }
+        } else {
+            chipGroupSelectedTags.setVisibility(View.GONE);
+        }
+    }
+
+    private Chip createFilterChip(String tagName) {
+        Chip chip = new Chip(this);
+        chip.setText(tagName);
+        chip.setTextSize(14f);
+
+        // ColoresPorTema
+        boolean isDarkMode = (getResources().getConfiguration().uiMode &
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES;
+
+        if (isDarkMode) {
+            chip.setChipBackgroundColorResource(R.color.purple);
+            chip.setTextColor(getResources().getColor(R.color.white, getTheme()));
+        } else {
+            chip.setChipBackgroundColorResource(R.color.chipSelectedBackground);
+            chip.setTextColor(getResources().getColor(R.color.chipSelectedText, getTheme()));
+        }
+
+        chip.setChipStrokeWidth(0f);
+        chip.setCloseIconVisible(true);
+        chip.setCloseIconResource(android.R.drawable.ic_menu_close_clear_cancel);
+        chip.setClickable(false);
+        chip.setCheckable(false);
+
+        chip.setOnCloseIconClickListener(v -> {
+            try {
+                // Eliminar etiqueta del nombre y del ID correspondiente con validaciones
+                int index = etiquetasNota.indexOf(tagName);
+                if (index != -1 && index < etiquetasNota.size()) {
+                    etiquetasNota.remove(index);
+                    // Asegurar que los índices coincidan para evitar crashes
+                    if (etiquetasNotaIds != null && index < etiquetasNotaIds.size()) {
+                        etiquetasNotaIds.remove(index);
+                    }
+                    updateSelectedTagsDisplay();
+                    // Guardar inmediatamente los cambios para sincronización
+                    guardarNotaInmediatamente();
+                }
+            } catch (Exception e) {
+                // Manejo de errores para evitar crashes
+                Toast.makeText(DetailNoteActivity.this, "Error al eliminar etiqueta", Toast.LENGTH_SHORT).show();
+                // Recargar las etiquetas para evitar inconsistencias
+                recargarEtiquetasDesdeFirebase();
+            }
+        });
+
+        return chip;
+    }
+
+    // Método para guardar la nota inmediatamente cuando se cambian etiquetas
+    private void guardarNotaInmediatamente() {
+        GenerarData generarData = GenerarData.getInstancia();
+        String id = txtIdNotaDetailNote.getText().toString();
+        String titulo = etTitulo.getText().toString().trim();
+        String contenido = etContenido.getText().toString().trim();
+
+        if (titulo.isEmpty() && contenido.isEmpty()) {
+            return; // No guardar notas vacías
+        }
+
+        Note nota = new Note();
+        nota.setId(id.isEmpty() ? null : id);
+        nota.setTitulo(titulo);
+        nota.setContenido(contenido);
+        nota.setTagIds(new ArrayList<>(etiquetasNotaIds));
+        nota.setTimestamp(System.currentTimeMillis());
+
+        generarData.getFirestoreRepository().saveNote(nota, new FirestoreRepository.SimpleCallback() {
+            @Override
+            public void onSuccess() {
+                runOnUiThread(() -> {
+                    // Actualizar el ID si es una nota nueva
+                    if (nota.getId() != null && !nota.getId().isEmpty()) {
+                        txtIdNotaDetailNote.setText(nota.getId());
+                    }
+                    // Actualizar datos locales inmediatamente para sincronización
+                    generarData.updateNoteInLocalList(nota);
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    Toast.makeText(DetailNoteActivity.this, "Error guardando nota", Toast.LENGTH_SHORT).show();
+                });
+            }
         });
     }
+
+    // Método para recargar etiquetas desde Firebase cuando hay errores
+    private void recargarEtiquetasDesdeFirebase() {
+        String noteId = txtIdNotaDetailNote.getText().toString();
+        if (noteId == null || noteId.isEmpty()) {
+            return;
+        }
+
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.getFirestoreRepository().getNoteById(noteId, new FirestoreRepository.DataCallback<Note>() {
+            @Override
+            public void onSuccess(Note note) {
+                runOnUiThread(() -> {
+                    if (note.getTagIds() != null) {
+                        etiquetasNotaIds = new ArrayList<>(note.getTagIds());
+                        loadTagNamesFromIds(etiquetasNotaIds);
+                    } else {
+                        etiquetasNotaIds.clear();
+                        etiquetasNota.clear();
+                        updateSelectedTagsDisplay();
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    Toast.makeText(DetailNoteActivity.this, "Error recargando etiquetas", Toast.LENGTH_SHORT).show();
+                });
+            }
+        });
+    }
+
     private void configurarVisibilidadBotones(boolean esNueva, boolean desdePapelera) {
         View fabEtiquetas = findViewById(R.id.fabEtiquetas);
         View fabEliminar = findViewById(R.id.fabEliminar);
@@ -138,6 +307,7 @@ public class DetailNoteActivity extends AppCompatActivity {
             containerUbicacion.setVisibility(View.VISIBLE);
         }
     }
+
     private void mostrarDialogoEnviarPapelera() {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
                 .setMessage("La nota se enviará a papelera")
@@ -161,6 +331,7 @@ public class DetailNoteActivity extends AppCompatActivity {
         });
         alertDialog.show();
     }
+
     private void mostrarDialogoEliminarNotaIndividual(String noteId) {
         MaterialAlertDialogBuilder dialog = new MaterialAlertDialogBuilder(this)
                 .setMessage("La nota se eliminará permanentemente")
@@ -184,13 +355,15 @@ public class DetailNoteActivity extends AppCompatActivity {
         });
         alertDialog.show();
     }
+
     private void enviarNotaAPapelera() {
         String noteId = txtIdNotaDetailNote.getText().toString();
         GenerarData generarData = GenerarData.getInstancia();
 
         if (noteId != null && !noteId.isEmpty()) {
             enviandoAPapelera = true;
-            guardarNotaAntesDePapelera();
+            // Eliminamos la llamada que causaba duplicación
+            // guardarNotaAntesDePapelera();
 
             generarData.getFirestoreRepository().moveNoteToTrash(noteId, new FirestoreRepository.SimpleCallback() {
                 @Override
@@ -206,6 +379,7 @@ public class DetailNoteActivity extends AppCompatActivity {
                         }, 500);
                     });
                 }
+
                 @Override
                 public void onError(String error) {
                     enviandoAPapelera = false;
@@ -218,6 +392,7 @@ public class DetailNoteActivity extends AppCompatActivity {
             Toast.makeText(this, "Error: ID de nota no válido", Toast.LENGTH_SHORT).show();
         }
     }
+
     private void guardarNotaAntesDePapelera() {
         String id = txtIdNotaDetailNote.getText().toString();
         String titulo = etTitulo.getText().toString();
@@ -228,19 +403,21 @@ public class DetailNoteActivity extends AppCompatActivity {
         }
         Note notaActualizada = new Note(titulo, contenido);
         notaActualizada.setId(id);
-        if (etiquetasNota != null) {
-            notaActualizada.setTagIds(etiquetasNota);
+        if (etiquetasNotaIds != null) {
+            notaActualizada.setTagIds(etiquetasNotaIds);
         }
         GenerarData generarData = GenerarData.getInstancia();
         generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
             @Override
             public void onSuccess() {
             }
+
             @Override
             public void onError(String error) {
             }
         });
     }
+
     private void eliminarNotaPermanentemente(String noteId) {
         GenerarData generarData = GenerarData.getInstancia();
         if (noteId != null && !noteId.isEmpty()) {
@@ -279,39 +456,147 @@ public class DetailNoteActivity extends AppCompatActivity {
         if (titulo.trim().isEmpty() && contenido.trim().isEmpty()) {
             return;
         }
+
         GenerarData generarData = GenerarData.getInstancia();
+
         if (id == null || id.isEmpty()) {
-            //NuevaNota
+            // Nueva nota
             Note nuevaNota = new Note(titulo, contenido);
-            if (etiquetasNota != null) {
-                nuevaNota.setTagIds(etiquetasNota);
+            if (etiquetasNotaIds != null) {
+                nuevaNota.setTagIds(etiquetasNotaIds);
             }
             generarData.getFirestoreRepository().saveNote(nuevaNota, new FirestoreRepository.SimpleCallback() {
                 @Override
                 public void onSuccess() {
+                    // Actualizar el ID en la vista después de guardar
+                    runOnUiThread(() -> {
+                        if (nuevaNota.getId() != null) {
+                            txtIdNotaDetailNote.setText(nuevaNota.getId());
+                        }
+                    });
                 }
+
                 @Override
                 public void onError(String error) {
                     Toast.makeText(DetailNoteActivity.this, "Error al guardar nota: " + error, Toast.LENGTH_SHORT).show();
                 }
             });
         } else {
-            Note notaActualizada = new Note(titulo, contenido);
-            notaActualizada.setId(id);
-            if (etiquetasNota != null) {
-                notaActualizada.setTagIds(etiquetasNota);
-            }
-            generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
+            // Nota existente - SOLO actualizar título, contenido y etiquetas
+            // Primero obtener la nota completa de Firebase para preservar todos los campos
+            generarData.getFirestoreRepository().getNoteById(id, new FirestoreRepository.DataCallback<Note>() {
                 @Override
-                public void onSuccess() {
+                public void onSuccess(Note notaExistente) {
+                    if (notaExistente != null) {
+                        // Actualizar solo los campos editables
+                        notaExistente.setTitulo(titulo);
+                        notaExistente.setContenido(contenido);
+                        if (etiquetasNotaIds != null) {
+                            notaExistente.setTagIds(etiquetasNotaIds);
+                        }
+
+                        generarData.getFirestoreRepository().saveNote(notaExistente, new FirestoreRepository.SimpleCallback() {
+                            @Override
+                            public void onSuccess() {
+                                // Guardado exitoso
+                            }
+
+                            @Override
+                            public void onError(String error) {
+                                Toast.makeText(DetailNoteActivity.this, "Error al actualizar nota: " + error, Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                    }
                 }
+
                 @Override
                 public void onError(String error) {
-                    Toast.makeText(DetailNoteActivity.this, "Error al actualizar nota: " + error, Toast.LENGTH_SHORT).show();
+                    // Si no se puede obtener la nota, crear una nueva instancia con los datos básicos
+                    Note notaActualizada = new Note(titulo, contenido);
+                    notaActualizada.setId(id);
+                    if (etiquetasNotaIds != null) {
+                        notaActualizada.setTagIds(etiquetasNotaIds);
+                    }
+
+                    generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
+                        @Override
+                        public void onSuccess() {
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            Toast.makeText(DetailNoteActivity.this, "Error al actualizar nota: " + error, Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
             });
         }
     }
+
+    private void loadTagNamesFromIds(ArrayList<String> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            etiquetasNota = new ArrayList<>();
+            etiquetasNotaIds = new ArrayList<>();
+            updateSelectedTagsDisplay();
+            return;
+        }
+
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.getFirestoreRepository().getTagsByIds(tagIds, new FirestoreRepository.DataCallback<List<Tag>>() {
+            @Override
+            public void onSuccess(List<Tag> tags) {
+                runOnUiThread(() -> {
+                    etiquetasNota = new ArrayList<>();
+                    etiquetasNotaIds = new ArrayList<>(tagIds); // Mantener los IDs originales
+                    for (Tag tag : tags) {
+                        etiquetasNota.add(tag.getEtiquetaDescripcion());
+                    }
+                    updateSelectedTagsDisplay();
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    etiquetasNota = new ArrayList<>();
+                    etiquetasNotaIds = new ArrayList<>();
+                    updateSelectedTagsDisplay();
+                });
+            }
+        });
+    }
+
+    private void convertTagNamesToIds(ArrayList<String> tagNames) {
+        if (tagNames == null || tagNames.isEmpty()) {
+            etiquetasNotaIds = new ArrayList<>();
+            return;
+        }
+
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.getFirestoreRepository().getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
+            @Override
+            public void onSuccess(List<Tag> allTags) {
+                runOnUiThread(() -> {
+                    etiquetasNotaIds = new ArrayList<>();
+                    for (String tagName : tagNames) {
+                        for (Tag tag : allTags) {
+                            if (tag.getEtiquetaDescripcion().equals(tagName)) {
+                                etiquetasNotaIds.add(tag.getId());
+                                break;
+                            }
+                        }
+                    }
+                });
+            }
+
+            @Override
+            public void onError(String error) {
+                // Mantener los datos actuales en caso de error
+            }
+        });
+    }
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {

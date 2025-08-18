@@ -4,10 +4,9 @@ public class UserProfile {
     private String nombres;
     private String apellidos;
     private String email;
-    private int profileIcon; // Resource ID del icono seleccionado
+    private int profileIcon;
 
     public UserProfile() {
-        // Constructor vacío para Firebase
     }
 
     public UserProfile(String nombres, String apellidos, String email, int profileIcon) {

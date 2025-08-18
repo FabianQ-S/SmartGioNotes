@@ -47,6 +47,11 @@ public class GenerarData {
             listener.onDataChanged();
         }
     }
+
+    // Método público para notificar cambios desde otras clases
+    public void forceNotifyDataChanged() {
+        notifyDataChanged();
+    }
     public void initializeWithContext(Context context) {
         if (firestoreRepository == null) {
             firestoreRepository = new FirestoreRepository(context);
@@ -141,6 +146,54 @@ public class GenerarData {
             });
         }
     }
+    public void refreshData() {
+        Log.d("GenerarData", "Refrescando datos inmediatamente");
+        if (firestoreRepository != null) {
+            String currentUserId = firestoreRepository.getCurrentUserId();
+            if (currentUserId != null) {
+                loadDataFromFirestore();
+            }
+        }
+    }
+    // Método para actualizar una nota específica en la lista local
+    public void updateNoteInLocalList(Note updatedNote) {
+        if (listaNotas != null && updatedNote != null && updatedNote.getId() != null) {
+            for (int i = 0; i < listaNotas.size(); i++) {
+                Note note = listaNotas.get(i);
+                if (note.getId().equals(updatedNote.getId())) {
+                    listaNotas.set(i, updatedNote);
+                    Log.d("GenerarData", "Nota actualizada en lista local: " + updatedNote.getId());
+                    notifyDataChanged();
+                    return;
+                }
+            }
+            // Si no se encontró, puede ser una nota nueva
+            if (!updatedNote.isTrash()) {
+                listaNotas.add(updatedNote);
+                Log.d("GenerarData", "Nueva nota agregada a lista local: " + updatedNote.getId());
+                notifyDataChanged();
+            }
+        }
+    }
+    // Método para limpiar referencias a etiquetas eliminadas
+    public void cleanupDeletedTagReferences(String deletedTagId) {
+        if (listaNotas != null && deletedTagId != null) {
+            boolean hasChanges = false;
+            for (Note note : listaNotas) {
+                if (note.getTagIds() != null && note.getTagIds().contains(deletedTagId)) {
+                    List<String> newTagIds = new ArrayList<>(note.getTagIds());
+                    newTagIds.remove(deletedTagId);
+                    note.setTagIds(newTagIds);
+                    hasChanges = true;
+                    Log.d("GenerarData", "Eliminada referencia a etiqueta " + deletedTagId + " de nota " + note.getId());
+                }
+            }
+            if (hasChanges) {
+                notifyDataChanged();
+            }
+        }
+    }
+
     public void clearUserData() {
         if (listaNotas != null) {
             listaNotas.clear();
@@ -243,51 +296,168 @@ public class GenerarData {
             return;
         }
 
+        // Si ya hay datos cargados, ejecutar callback inmediatamente
         if (hasDataLoaded()) {
-            Log.d("GenerarData", "Datos ya están cargados - ejecutando callback inmediatamente");
             if (callback != null) {
                 callback.onInitializationComplete();
             }
             return;
         }
 
-        Log.d("GenerarData", "No hay datos locales - cargando desde Firestore");
-        refreshDataForCurrentUser(callback);
+        // Si no hay datos, cargar desde Firestore
+        loadDataFromFirestoreWithCallback(callback);
     }
 
-    public void loadFavorites(Context context) {
-    }
+    // Método seguro para eliminar etiquetas
+    public void removeTag(String tagId, FirestoreRepository.SimpleCallback callback) {
+        if (tagId == null || listaEtiquetas == null) {
+            if (callback != null) callback.onError("ID de etiqueta inválido");
+            return;
+        }
 
-    public void saveFavorites(Context context) {
-    }
+        // Primero limpiar referencias en notas locales
+        cleanupDeletedTagReferences(tagId);
 
-    public void onUserChanged(String newUserId) {
-        Log.d("GenerarData", "Usuario cambió a: " + newUserId);
-        //LimpiarDatos
-        clearUserData();
-        dataChangeListeners.clear();
-        //cargarDatosNuevoUsuario
-        if (newUserId != null && firestoreRepository != null) {
-            Log.d("GenerarData", "Cargando datos para nuevo usuario: " + newUserId);
-            loadDataFromFirestore();
+        // Eliminar de la lista local
+        listaEtiquetas.removeIf(tag -> tagId.equals(tag.getId()));
+
+        // Notificar cambios inmediatamente
+        notifyDataChanged();
+
+        // Eliminar de Firestore
+        if (firestoreRepository != null) {
+            firestoreRepository.deleteTag(tagId, new FirestoreRepository.SimpleCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d("GenerarData", "Etiqueta eliminada exitosamente de Firestore: " + tagId);
+                    // Actualizar notas en Firestore que tenían esta etiqueta
+                    updateNotesAfterTagDeletion(tagId);
+                    if (callback != null) callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e("GenerarData", "Error eliminando etiqueta de Firestore: " + error);
+                    // Recargar datos para mantener consistencia
+                    refreshData();
+                    if (callback != null) callback.onError(error);
+                }
+            });
         } else {
-            Log.d("GenerarData", "Usuario deslogueado - manteniendo datos vacíos");
-            notifyDataChanged();
+            if (callback != null) callback.onError("Repository no inicializado");
         }
     }
+
+    // Método para actualizar notas en Firestore después de eliminar una etiqueta
+    private void updateNotesAfterTagDeletion(String deletedTagId) {
+        if (listaNotas == null || firestoreRepository == null) return;
+
+        for (Note note : listaNotas) {
+            if (note.getTagIds() != null && note.getTagIds().contains(deletedTagId)) {
+                // Crear una copia de la nota con la etiqueta eliminada
+                Note updatedNote = new Note(note);
+                List<String> newTagIds = new ArrayList<>(note.getTagIds());
+                newTagIds.remove(deletedTagId);
+                updatedNote.setTagIds(newTagIds);
+
+                // Actualizar en Firestore
+                firestoreRepository.saveNote(updatedNote, new FirestoreRepository.SimpleCallback() {
+                    @Override
+                    public void onSuccess() {
+                        Log.d("GenerarData", "Nota actualizada después de eliminar etiqueta: " + note.getId());
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        Log.e("GenerarData", "Error actualizando nota después de eliminar etiqueta: " + error);
+                    }
+                });
+            }
+        }
+    }
+
+    // Método para obtener el número de etiquetas válidas de una nota
+    public int getValidTagCountForNote(Note note) {
+        if (note == null || note.getTagIds() == null || listaEtiquetas == null) {
+            return 0;
+        }
+
+        int validCount = 0;
+        for (String tagId : note.getTagIds()) {
+            // Verificar que la etiqueta aún existe
+            boolean tagExists = false;
+            for (Tag tag : listaEtiquetas) {
+                if (tag.getId() != null && tag.getId().equals(tagId)) {
+                    tagExists = true;
+                    break;
+                }
+            }
+            if (tagExists) {
+                validCount++;
+            }
+        }
+        return validCount;
+    }
+
+    // Método para sincronizar inmediatamente después de crear una nota
+    public void addNotaWithImmediateSync(Note nota, FirestoreRepository.SimpleCallback callback) {
+        if (listaNotas == null) {
+            listaNotas = new ArrayList<>();
+        }
+
+        // Agregar a la lista local primero
+        listaNotas.add(nota);
+        notifyDataChanged();
+
+        if (firestoreRepository != null) {
+            firestoreRepository.saveNote(nota, new FirestoreRepository.SimpleCallback() {
+                @Override
+                public void onSuccess() {
+                    Log.d("GenerarData", "Nota guardada exitosamente en Firestore con sync inmediato");
+                    // Recargar datos para asegurar sincronización
+                    refreshData();
+                    if (callback != null) callback.onSuccess();
+                }
+
+                @Override
+                public void onError(String error) {
+                    Log.e("GenerarData", "Error guardando nota: " + error);
+                    // Remover de lista local si falló
+                    listaNotas.remove(nota);
+                    notifyDataChanged();
+                    if (callback != null) callback.onError(error);
+                }
+            });
+        } else {
+            if (callback != null) callback.onError("Repository no inicializado");
+        }
+    }
+
+    // Método para forzar reinicialización completa del sistema
     public void forceCompleteReinitialization(Context context) {
         Log.d("GenerarData", "Forzando reinicialización completa del sistema");
 
+        // Limpiar datos actuales
         clearUserData();
-        dataChangeListeners.clear();
-        if (firestoreRepository != null) {
-            firestoreRepository.cleanup();
+
+        // Reinicializar repository si es necesario
+        if (firestoreRepository == null) {
+            firestoreRepository = new FirestoreRepository(context);
         }
-        firestoreRepository = new FirestoreRepository(context);
+
+        // Verificar si el usuario cambió
         String currentUserId = firestoreRepository.getCurrentUserId();
-        if (currentUserId != null) {
+        String previousUserId = firestoreRepository.getPreviousUserId();
+
+        if (currentUserId != null && !currentUserId.equals(previousUserId)) {
+            Log.d("GenerarData", "Usuario detectado como cambiado en getCurrentUserId(): " + previousUserId + " -> " + currentUserId);
             Log.d("GenerarData", "Reinicializando para usuario: " + currentUserId);
-            loadDataFromFirestore();
         }
+
+        // Cargar datos del usuario actual
+        loadDataFromFirestore();
+
+        // Notificar cambios
+        notifyDataChanged();
     }
 }

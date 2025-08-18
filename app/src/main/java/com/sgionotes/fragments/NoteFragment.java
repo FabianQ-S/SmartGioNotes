@@ -46,28 +46,10 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
                         Intent data = result.getData();
                         boolean esNueva = data.getBooleanExtra("esNueva", false);
                         if (esNueva) {
-                            titulo = data.getStringExtra("titulo");
-                            contenido = data.getStringExtra("contenido");
-                            if (!titulo.isEmpty() || !contenido.isEmpty()) {
-                                Note nuevaNota = new Note(titulo, contenido);
-                                GenerarData.getInstance().getFirestoreRepository()
-                                        .saveNote(nuevaNota, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
-                                            @Override
-                                            public void onSuccess() {
-                                                listaNotas.add(0, nuevaNota);
-                                                notaAdapter.notifyItemInserted(0);
-                                                recyclerNotas.scrollToPosition(0);
-                                            }
-                                            @Override
-                                            public void onError(String error) {
-                                                //Error
-                                                if (getContext() != null) {
-                                                    android.widget.Toast.makeText(getContext(),
-                                                            "Error al guardar la nota: " + error,
-                                                            android.widget.Toast.LENGTH_SHORT).show();
-                                                }
-                                            }
-                                        });
+                            // No guardar aquí - DetailNoteActivity ya guarda en onPause
+                            // Solo refrescar la lista
+                            if (generarData != null) {
+                                generarData.refreshDataForCurrentUser();
                             }
                         } else {
                             int position = data.getIntExtra("position", -1);
@@ -105,11 +87,11 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
             intent.putExtra("contenido", nota.getContenido());
             intent.putExtra("estaCreado", true);
             intent.putExtra("position", position);
-            ArrayList<String> etiquetas = new ArrayList<>();
-            for (Tag tag : nota.getEtiquetas()) {
-                etiquetas.add(tag.getEtiquetaDescripcion());
+            // Pasar los IDs de las etiquetas en lugar de los nombres
+            if (nota.getTagIds() != null && !nota.getTagIds().isEmpty()) {
+                ArrayList<String> etiquetasIds = new ArrayList<>(nota.getTagIds());
+                intent.putStringArrayListExtra("etiquetas", etiquetasIds);
             }
-            intent.putStringArrayListExtra("etiquetas", etiquetas);
             launchNewNoteActivity.launch(intent);
         });
         floatingActionButton.setOnClickListener(btn -> {

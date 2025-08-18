@@ -12,6 +12,7 @@ public class Note {
     private boolean isTrash;
     private long timestamp;
     private String userId;
+    private String gpsLocation; // Nuevo campo para GPS
 
     // Constructor vacío requerido por Firebase
     public Note() {
@@ -24,9 +25,9 @@ public class Note {
         this.isTrash = false;
         this.timestamp = System.currentTimeMillis();
         this.tagIds = new ArrayList<>();
+        this.gpsLocation = null; // Inicializar GPS como null
     }
 
-    // Constructor de compatibilidad con el código existente
     public Note(int legacyId, String titulo, String contenido, List<Tag> etiquetas,
                 boolean cortarContenido, boolean isTrash) {
         this.titulo = titulo;
@@ -36,7 +37,7 @@ public class Note {
         this.timestamp = System.currentTimeMillis();
         this.tagIds = new ArrayList<>();
 
-        // Convertir etiquetas a IDs
+        //Etiquetas ID
         if (etiquetas != null) {
             for (Tag tag : etiquetas) {
                 if (tag.getId() != null) {
@@ -58,7 +59,6 @@ public class Note {
         this.timestamp = System.currentTimeMillis();
     }
 
-    // Getters y Setters
     public String getId() {
         return id;
     }
@@ -103,7 +103,17 @@ public class Note {
         return isFavorite;
     }
 
+    // Getter adicional para Firebase
+    public boolean getIsFavorite() {
+        return isFavorite;
+    }
+
     public void setFavorite(boolean favorite) {
+        this.isFavorite = favorite;
+    }
+
+    // Setter adicional para Firebase
+    public void setIsFavorite(boolean favorite) {
         this.isFavorite = favorite;
     }
 
@@ -111,7 +121,17 @@ public class Note {
         return isTrash;
     }
 
+    // Getter adicional para Firebase
+    public boolean getIsTrash() {
+        return isTrash;
+    }
+
     public void setTrash(boolean trash) {
+        this.isTrash = trash;
+    }
+
+    // Setter adicional para Firebase
+    public void setIsTrash(boolean trash) {
         this.isTrash = trash;
     }
 
@@ -123,10 +143,15 @@ public class Note {
         this.timestamp = timestamp;
     }
 
-    // Métodos de compatibilidad con código existente
+    public String getGpsLocation() {
+        return gpsLocation;
+    }
+
+    public void setGpsLocation(String gpsLocation) {
+        this.gpsLocation = gpsLocation;
+    }
+
     public List<Tag> getEtiquetas() {
-        // Retorna una lista vacía por compatibilidad
-        // En el nuevo sistema, las etiquetas se manejan por IDs
         return new ArrayList<>();
     }
 
@@ -142,7 +167,7 @@ public class Note {
     }
 
     public List<Tag> getTags() {
-        // Método de compatibilidad
+        // MetodoDeCompatibilidad
         return getEtiquetas();
     }
 
@@ -150,7 +175,7 @@ public class Note {
         setEtiquetas(tags);
     }
 
-    // Métodos de utilidad
+    // Utilidad
     public String getContenidoRecortado() {
         if (contenido != null && contenido.length() > 190) {
             return contenido.substring(0, 190) + "...";

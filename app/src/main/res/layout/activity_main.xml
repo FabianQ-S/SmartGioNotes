@@ -8,7 +8,7 @@
     android:layout_height="match_parent"
     tools:context=".activities.MainActivity">
 
-    <!-- CONTENIDO PRINCIPAL -->
+    <!-- Contenido Principal -->
     <LinearLayout
         android:id="@+id/main_content"
         android:layout_width="match_parent"
@@ -39,7 +39,7 @@
 
         </androidx.appcompat.widget.Toolbar>
 
-        <!-- Contenedor de fragmentos -->
+        <!-- Conteiner -->
         <FrameLayout
             android:id="@+id/contenedor"
             android:layout_gravity="center"
@@ -49,7 +49,7 @@
 
     </LinearLayout>
 
-    <!-- NAVEGADOR LATERAL -->
+    <!-- Navegador -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="280dp"

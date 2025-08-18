@@ -28,7 +28,6 @@ public class TagsActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_tags);
-
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -37,7 +36,6 @@ public class TagsActivity extends AppCompatActivity {
         }
 
         initializeViews();
-
         Intent intent = getIntent();
         if (intent != null) {
             selectedTagsFromNote = intent.getStringArrayListExtra("tags");
@@ -107,7 +105,6 @@ public class TagsActivity extends AppCompatActivity {
             tvAllTagsHeader.setVisibility(View.GONE);
         }
     }
-
     private void populateChipGroup(ChipGroup chipGroup, List<Tag> tags, boolean isFavoriteGroup) {
         chipGroup.removeAllViews();
 
@@ -125,7 +122,6 @@ public class TagsActivity extends AppCompatActivity {
         chip.setTextColor(getResources().getColor(R.color.chipText, getTheme()));
         chip.setChipStrokeColorResource(R.color.chipStrokeColor);
         chip.setChipStrokeWidth(2f);
-
         boolean isSelected = selectedTagsFromNote.contains(tag.getEtiquetaDescripcion());
         chip.setCheckable(true);
         chip.setChecked(isSelected);
@@ -164,12 +160,26 @@ public class TagsActivity extends AppCompatActivity {
 
     @Override
     public boolean onSupportNavigateUp() {
+        sendResultBack();
         getOnBackPressedDispatcher().onBackPressed();
         return true;
     }
 
     @Override
+    public void onBackPressed() {
+        sendResultBack();
+        super.onBackPressed();
+    }
+
+    private void sendResultBack() {
+        Intent resultIntent = new Intent();
+        resultIntent.putStringArrayListExtra("selectedTags", selectedTagsFromNote);
+        setResult(RESULT_OK, resultIntent);
+    }
+
+    @Override
     public void finish() {
+        sendResultBack();
         super.finish();
         overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
     }

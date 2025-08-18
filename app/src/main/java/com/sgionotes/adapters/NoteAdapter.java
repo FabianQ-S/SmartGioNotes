@@ -16,6 +16,7 @@ import com.sgionotes.R;
 import com.sgionotes.models.Tag;
 import com.sgionotes.models.Note;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder> {
@@ -52,15 +53,37 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         holder.txtTitulo.setText(nota.getTitulo());
         holder.txtContenido.setText(nota.getContenido());
 
-        LayoutInflater inflater = LayoutInflater.from(context);
+        // Limpiar chips anteriores
         holder.chipGroup.removeAllViews();
+        holder.chipGroup.setVisibility(View.GONE);
 
-        for (Tag tag : nota.getEtiquetas()) {
-            Chip chip = (Chip) inflater.inflate(R.layout.layout_item_chip, holder.chipGroup, false);
-            chip.setClickable(false);
-            chip.setCheckable(false);
-            chip.setText(tag.getEtiquetaDescripcion());
-            holder.chipGroup.addView(chip);
+        // Mostrar etiquetas si existen tagIds válidos
+        if (nota.getTagIds() != null && !nota.getTagIds().isEmpty()) {
+            // Filtrar etiquetas válidas (que realmente existen)
+            List<String> validTagIds = getValidTagIds(nota.getTagIds());
+
+            if (!validTagIds.isEmpty()) {
+                holder.chipGroup.setVisibility(View.VISIBLE);
+                LayoutInflater inflater = LayoutInflater.from(context);
+                Chip chip = (Chip) inflater.inflate(R.layout.layout_item_chip, holder.chipGroup, false);
+                chip.setClickable(false);
+                chip.setCheckable(false);
+
+                // Actualizar el contador con etiquetas válidas únicamente
+                int validCount = validTagIds.size();
+                chip.setText(validCount + " etiqueta" + (validCount > 1 ? "s" : ""));
+                holder.chipGroup.addView(chip);
+
+                // Actualizar la nota con las etiquetas válidas para mantener consistencia
+                if (validTagIds.size() != nota.getTagIds().size()) {
+                    nota.setTagIds(validTagIds);
+                    // Notificar a GenerarData que hubo cambios en las etiquetas
+                    com.sgionotes.models.GenerarData.getInstancia().forceNotifyDataChanged();
+                }
+            } else {
+                // Si no hay etiquetas válidas, limpiar la lista de tagIds de la nota
+                nota.setTagIds(new ArrayList<>());
+            }
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -68,7 +91,35 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
                 listener.onItemClick(nota);
             }
         });
+    }
 
+    // Método para validar que las etiquetas realmente existen
+    private List<String> getValidTagIds(List<String> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Obtener lista actual de etiquetas disponibles desde GenerarData
+        List<Tag> availableTags = com.sgionotes.models.GenerarData.getInstancia().getListaEtiquetas();
+        List<String> availableTagIds = new ArrayList<>();
+
+        if (availableTags != null) {
+            for (Tag tag : availableTags) {
+                if (tag.getId() != null && !tag.getId().isEmpty()) {
+                    availableTagIds.add(tag.getId());
+                }
+            }
+        }
+
+        // Filtrar solo los IDs que realmente existen
+        List<String> validIds = new ArrayList<>();
+        for (String tagId : tagIds) {
+            if (tagId != null && !tagId.isEmpty() && availableTagIds.contains(tagId)) {
+                validIds.add(tagId);
+            }
+        }
+
+        return validIds;
     }
 
     @Override
@@ -78,6 +129,7 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
 
     public void updateNotes(List<Note> newNotes) {
         this.listaNotas = newNotes;
+        notifyDataSetChanged(); // Forzar actualización completa del adaptador
     }
 
     public static class NotaViewHolder extends RecyclerView.ViewHolder {

@@ -73,9 +73,27 @@
             android:lineSpacingExtra="4dp"
             android:padding="2dp"
             app:layout_constraintTop_toBottomOf="@+id/divider"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toTopOf="@+id/chipGroupSelectedTags" />
+
+        <!-- EtiquetasSeleccionadas -->
+        <com.google.android.material.chip.ChipGroup
+            android:id="@+id/chipGroupSelectedTags"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="12dp"
+            app:chipSpacing="6dp"
+            app:chipSpacingHorizontal="6dp"
+            app:chipSpacingVertical="4dp"
+            app:singleSelection="false"
+            app:selectionRequired="false"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintBottom_toTopOf="@+id/fabButtonsLayout" />
 
         <LinearLayout
+            android:id="@+id/fabButtonsLayout"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"

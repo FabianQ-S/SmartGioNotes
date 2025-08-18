@@ -7,7 +7,6 @@ public class Tag {
     private long favoriteTimestamp;
     private String userId;
 
-    // Constructor vacío requerido por Firebase
     public Tag() {
     }
 
@@ -25,7 +24,6 @@ public class Tag {
         this.favoriteTimestamp = 0;
     }
 
-    // Getters y Setters
     public String getId() {
         return id;
     }
