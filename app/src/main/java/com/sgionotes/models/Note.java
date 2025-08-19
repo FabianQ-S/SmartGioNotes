@@ -1,5 +1,4 @@
 package com.sgionotes.models;
-
 import java.util.List;
 import java.util.ArrayList;
 
@@ -12,12 +11,9 @@ public class Note {
     private boolean isTrash;
     private long timestamp;
     private String userId;
-    private String gpsLocation; // Nuevo campo para GPS
-
-    // Constructor vacío requerido por Firebase
+    private String gpsLocation;
     public Note() {
     }
-
     public Note(String titulo, String contenido) {
         this.titulo = titulo;
         this.contenido = contenido;
@@ -25,9 +21,29 @@ public class Note {
         this.isTrash = false;
         this.timestamp = System.currentTimeMillis();
         this.tagIds = new ArrayList<>();
-        this.gpsLocation = null; // Inicializar GPS como null
+        this.gpsLocation = null; //InicializarGPS
     }
-
+    public Note(Note other) {
+        if (other != null) {
+            this.id = other.id;
+            this.titulo = other.titulo;
+            this.contenido = other.contenido;
+            this.tagIds = other.tagIds != null ? new ArrayList<>(other.tagIds) : new ArrayList<>();
+            this.isFavorite = other.isFavorite;
+            this.isTrash = other.isTrash;
+            this.timestamp = other.timestamp;
+            this.userId = other.userId;
+            this.gpsLocation = other.gpsLocation;
+        } else {
+            this.titulo = "";
+            this.contenido = "";
+            this.isFavorite = false;
+            this.isTrash = false;
+            this.timestamp = System.currentTimeMillis();
+            this.tagIds = new ArrayList<>();
+            this.gpsLocation = null;
+        }
+    }
     public Note(int legacyId, String titulo, String contenido, List<Tag> etiquetas,
                 boolean cortarContenido, boolean isTrash) {
         this.titulo = titulo;
@@ -37,7 +53,7 @@ public class Note {
         this.timestamp = System.currentTimeMillis();
         this.tagIds = new ArrayList<>();
 
-        //Etiquetas ID
+        //EtiquetasID
         if (etiquetas != null) {
             for (Tag tag : etiquetas) {
                 if (tag.getId() != null) {
@@ -103,7 +119,6 @@ public class Note {
         return isFavorite;
     }
 
-    // Getter adicional para Firebase
     public boolean getIsFavorite() {
         return isFavorite;
     }
@@ -112,7 +127,6 @@ public class Note {
         this.isFavorite = favorite;
     }
 
-    // Setter adicional para Firebase
     public void setIsFavorite(boolean favorite) {
         this.isFavorite = favorite;
     }
@@ -121,7 +135,6 @@ public class Note {
         return isTrash;
     }
 
-    // Getter adicional para Firebase
     public boolean getIsTrash() {
         return isTrash;
     }
@@ -130,7 +143,6 @@ public class Note {
         this.isTrash = trash;
     }
 
-    // Setter adicional para Firebase
     public void setIsTrash(boolean trash) {
         this.isTrash = trash;
     }
@@ -170,7 +182,6 @@ public class Note {
         // MetodoDeCompatibilidad
         return getEtiquetas();
     }
-
     public void setTags(List<Tag> tags) {
         setEtiquetas(tags);
     }

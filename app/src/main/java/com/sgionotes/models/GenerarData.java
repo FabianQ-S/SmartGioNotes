@@ -47,8 +47,6 @@ public class GenerarData {
             listener.onDataChanged();
         }
     }
-
-    // Método público para notificar cambios desde otras clases
     public void forceNotifyDataChanged() {
         notifyDataChanged();
     }
@@ -155,7 +153,6 @@ public class GenerarData {
             }
         }
     }
-    // Método para actualizar una nota específica en la lista local
     public void updateNoteInLocalList(Note updatedNote) {
         if (listaNotas != null && updatedNote != null && updatedNote.getId() != null) {
             for (int i = 0; i < listaNotas.size(); i++) {
@@ -167,7 +164,6 @@ public class GenerarData {
                     return;
                 }
             }
-            // Si no se encontró, puede ser una nota nueva
             if (!updatedNote.isTrash()) {
                 listaNotas.add(updatedNote);
                 Log.d("GenerarData", "Nueva nota agregada a lista local: " + updatedNote.getId());
@@ -175,7 +171,6 @@ public class GenerarData {
             }
         }
     }
-    // Método para limpiar referencias a etiquetas eliminadas
     public void cleanupDeletedTagReferences(String deletedTagId) {
         if (listaNotas != null && deletedTagId != null) {
             boolean hasChanges = false;
@@ -186,11 +181,67 @@ public class GenerarData {
                     note.setTagIds(newTagIds);
                     hasChanges = true;
                     Log.d("GenerarData", "Eliminada referencia a etiqueta " + deletedTagId + " de nota " + note.getId());
+
+                    // ActualizarFirebase
+                    if (firestoreRepository != null) {
+                        firestoreRepository.saveNote(note, new FirestoreRepository.SimpleCallback() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d("GenerarData", "Nota actualizada en Firebase tras eliminar etiqueta");
+                            }
+                            @Override
+                            public void onError(String error) {
+                                Log.e("GenerarData", "Error actualizando nota tras eliminar etiqueta: " + error);
+                            }
+                        });
+                    }
                 }
             }
             if (hasChanges) {
                 notifyDataChanged();
             }
+        }
+    }
+    public int getTagCountForNote(String noteId) {
+        if (noteId == null || listaNotas == null) return 0;
+        for (Note note : listaNotas) {
+            if (noteId.equals(note.getId())) {
+                return note.getTagIds() != null ? note.getTagIds().size() : 0;
+            }
+        }
+        return 0;
+    }
+
+    // ForzarSincronizaciónDatos
+    public void forceSyncData() {
+        Log.d("GenerarData", "Forzando sincronización completa de datos");
+        if (firestoreRepository != null) {
+            // Recargar etiquetas
+            firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
+                @Override
+                public void onSuccess(List<Tag> tags) {
+                    listaEtiquetas = tags;
+                    Log.d("GenerarData", "Etiquetas sincronizadas: " + tags.size());
+                    notifyDataChanged();
+                }
+                @Override
+                public void onError(String error) {
+                    Log.e("GenerarData", "Error sincronizando etiquetas: " + error);
+                }
+            });
+            // RecargarNotas
+            firestoreRepository.getAllNotesIncludingTrash(new FirestoreRepository.DataCallback<List<Note>>() {
+                @Override
+                public void onSuccess(List<Note> notes) {
+                    listaNotas = notes;
+                    Log.d("GenerarData", "Notas sincronizadas: " + notes.size());
+                    notifyDataChanged();
+                }
+                @Override
+                public void onError(String error) {
+                    Log.e("GenerarData", "Error sincronizando notas: " + error);
+                }
+            });
         }
     }
 
@@ -295,42 +346,31 @@ public class GenerarData {
             }
             return;
         }
-
-        // Si ya hay datos cargados, ejecutar callback inmediatamente
         if (hasDataLoaded()) {
             if (callback != null) {
                 callback.onInitializationComplete();
             }
             return;
         }
-
-        // Si no hay datos, cargar desde Firestore
         loadDataFromFirestoreWithCallback(callback);
     }
 
-    // Método seguro para eliminar etiquetas
+    // EliminarEtiquetas
     public void removeTag(String tagId, FirestoreRepository.SimpleCallback callback) {
         if (tagId == null || listaEtiquetas == null) {
             if (callback != null) callback.onError("ID de etiqueta inválido");
             return;
         }
-
-        // Primero limpiar referencias en notas locales
         cleanupDeletedTagReferences(tagId);
-
-        // Eliminar de la lista local
         listaEtiquetas.removeIf(tag -> tagId.equals(tag.getId()));
-
-        // Notificar cambios inmediatamente
         notifyDataChanged();
 
-        // Eliminar de Firestore
         if (firestoreRepository != null) {
             firestoreRepository.deleteTag(tagId, new FirestoreRepository.SimpleCallback() {
                 @Override
                 public void onSuccess() {
                     Log.d("GenerarData", "Etiqueta eliminada exitosamente de Firestore: " + tagId);
-                    // Actualizar notas en Firestore que tenían esta etiqueta
+                    // ActualizarEtiquetasDeNotasExistentes
                     updateNotesAfterTagDeletion(tagId);
                     if (callback != null) callback.onSuccess();
                 }
@@ -338,7 +378,6 @@ public class GenerarData {
                 @Override
                 public void onError(String error) {
                     Log.e("GenerarData", "Error eliminando etiqueta de Firestore: " + error);
-                    // Recargar datos para mantener consistencia
                     refreshData();
                     if (callback != null) callback.onError(error);
                 }
@@ -347,26 +386,21 @@ public class GenerarData {
             if (callback != null) callback.onError("Repository no inicializado");
         }
     }
-
-    // Método para actualizar notas en Firestore después de eliminar una etiqueta
     private void updateNotesAfterTagDeletion(String deletedTagId) {
         if (listaNotas == null || firestoreRepository == null) return;
-
         for (Note note : listaNotas) {
             if (note.getTagIds() != null && note.getTagIds().contains(deletedTagId)) {
-                // Crear una copia de la nota con la etiqueta eliminada
                 Note updatedNote = new Note(note);
                 List<String> newTagIds = new ArrayList<>(note.getTagIds());
                 newTagIds.remove(deletedTagId);
                 updatedNote.setTagIds(newTagIds);
 
-                // Actualizar en Firestore
+                // ActualizarFirestore
                 firestoreRepository.saveNote(updatedNote, new FirestoreRepository.SimpleCallback() {
                     @Override
                     public void onSuccess() {
                         Log.d("GenerarData", "Nota actualizada después de eliminar etiqueta: " + note.getId());
                     }
-
                     @Override
                     public void onError(String error) {
                         Log.e("GenerarData", "Error actualizando nota después de eliminar etiqueta: " + error);
@@ -375,8 +409,6 @@ public class GenerarData {
             }
         }
     }
-
-    // Método para obtener el número de etiquetas válidas de una nota
     public int getValidTagCountForNote(Note note) {
         if (note == null || note.getTagIds() == null || listaEtiquetas == null) {
             return 0;
@@ -384,7 +416,6 @@ public class GenerarData {
 
         int validCount = 0;
         for (String tagId : note.getTagIds()) {
-            // Verificar que la etiqueta aún existe
             boolean tagExists = false;
             for (Tag tag : listaEtiquetas) {
                 if (tag.getId() != null && tag.getId().equals(tagId)) {
@@ -399,22 +430,18 @@ public class GenerarData {
         return validCount;
     }
 
-    // Método para sincronizar inmediatamente después de crear una nota
+    // SincronizacionInmediata
     public void addNotaWithImmediateSync(Note nota, FirestoreRepository.SimpleCallback callback) {
         if (listaNotas == null) {
             listaNotas = new ArrayList<>();
         }
-
-        // Agregar a la lista local primero
         listaNotas.add(nota);
         notifyDataChanged();
-
         if (firestoreRepository != null) {
             firestoreRepository.saveNote(nota, new FirestoreRepository.SimpleCallback() {
                 @Override
                 public void onSuccess() {
                     Log.d("GenerarData", "Nota guardada exitosamente en Firestore con sync inmediato");
-                    // Recargar datos para asegurar sincronización
                     refreshData();
                     if (callback != null) callback.onSuccess();
                 }
@@ -422,7 +449,6 @@ public class GenerarData {
                 @Override
                 public void onError(String error) {
                     Log.e("GenerarData", "Error guardando nota: " + error);
-                    // Remover de lista local si falló
                     listaNotas.remove(nota);
                     notifyDataChanged();
                     if (callback != null) callback.onError(error);
@@ -433,31 +459,139 @@ public class GenerarData {
         }
     }
 
-    // Método para forzar reinicialización completa del sistema
+    // ForzarReinicializacion
     public void forceCompleteReinitialization(Context context) {
         Log.d("GenerarData", "Forzando reinicialización completa del sistema");
-
-        // Limpiar datos actuales
         clearUserData();
 
-        // Reinicializar repository si es necesario
         if (firestoreRepository == null) {
             firestoreRepository = new FirestoreRepository(context);
         }
-
-        // Verificar si el usuario cambió
         String currentUserId = firestoreRepository.getCurrentUserId();
         String previousUserId = firestoreRepository.getPreviousUserId();
-
         if (currentUserId != null && !currentUserId.equals(previousUserId)) {
             Log.d("GenerarData", "Usuario detectado como cambiado en getCurrentUserId(): " + previousUserId + " -> " + currentUserId);
             Log.d("GenerarData", "Reinicializando para usuario: " + currentUserId);
         }
-
-        // Cargar datos del usuario actual
         loadDataFromFirestore();
-
-        // Notificar cambios
         notifyDataChanged();
+    }
+
+    // CambioUsuario
+    public void onUserChanged(String newUserId) {
+        Log.d("GenerarData", "Usuario cambió a: " + newUserId);
+        if (newUserId != null) {
+            String currentUserId = firestoreRepository != null ? firestoreRepository.getCurrentUserId() : null;
+            if (currentUserId != null && currentUserId.equals(newUserId)) {
+                Log.d("GenerarData", "Es el mismo usuario, no limpiar datos");
+                refreshData();
+                return;
+            }
+        }
+        clearUserData();
+        if (newUserId != null && firestoreRepository != null) {
+            loadDataFromFirestore();
+        }
+        notifyDataChanged();
+    }
+    public void saveFavorites(android.content.Context context) {
+        //VacioParaCompatibilidad
+        Log.d("GenerarData", "saveFavorites llamado - método de compatibilidad");
+    }
+
+    // MétodoInconsistencias
+    public void validateAndFixTagConsistency() {
+        Log.d("GenerarData", "Validando y corrigiendo consistencia de etiquetas");
+
+        if (listaNotas == null || listaEtiquetas == null) {
+            Log.w("GenerarData", "No se pueden validar etiquetas: listas no inicializadas");
+            return;
+        }
+        List<String> existingTagIds = new ArrayList<>();
+        for (Tag tag : listaEtiquetas) {
+            if (tag.getId() != null) {
+                existingTagIds.add(tag.getId());
+            }
+        }
+        boolean hasFixedNotes = false;
+        for (Note note : listaNotas) {
+            if (note.getTagIds() != null && !note.getTagIds().isEmpty()) {
+                List<String> validTagIds = new ArrayList<>();
+                List<String> invalidTagIds = new ArrayList<>();
+                for (String tagId : note.getTagIds()) {
+                    if (existingTagIds.contains(tagId)) {
+                        validTagIds.add(tagId);
+                    } else {
+                        invalidTagIds.add(tagId);
+                    }
+                }
+                if (!invalidTagIds.isEmpty()) {
+                    Log.w("GenerarData", "Nota " + note.getId() + " tiene " + invalidTagIds.size() +
+                         " etiquetas inválidas. Corrigiendo...");
+                    note.setTagIds(validTagIds);
+                    hasFixedNotes = true;
+
+                    // ForzarGuardarNotaCorregida
+                    if (firestoreRepository != null) {
+                        firestoreRepository.saveNote(note, new FirestoreRepository.SimpleCallback() {
+                            @Override
+                            public void onSuccess() {
+                                Log.d("GenerarData", "Nota corregida guardada exitosamente");
+                            }
+                            @Override
+                            public void onError(String error) {
+                                Log.e("GenerarData", "Error guardando nota corregida: " + error);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        if (hasFixedNotes) {
+            Log.i("GenerarData", "Se corrigieron inconsistencias de etiquetas");
+            notifyDataChanged();
+        } else {
+            Log.d("GenerarData", "No se encontraron inconsistencias de etiquetas");
+        }
+    }
+
+    // MetodoRefrescarDatos
+    public void refreshDataWithValidation() {
+        Log.d("GenerarData", "Refrescando datos con validación de consistencia");
+
+        if (firestoreRepository != null) {
+            String currentUserId = firestoreRepository.getCurrentUserId();
+            if (currentUserId != null) {
+                firestoreRepository.getAllNotesIncludingTrash(new FirestoreRepository.DataCallback<List<Note>>() {
+                    @Override
+                    public void onSuccess(List<Note> notes) {
+                        listaNotas = notes;
+                        Log.d("GenerarData", "Notas refrescadas: " + notes.size());
+                        firestoreRepository.getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
+                            @Override
+                            public void onSuccess(List<Tag> tags) {
+                                listaEtiquetas = tags;
+                                Log.d("GenerarData", "Etiquetas refrescadas: " + tags.size());
+                                validateAndFixTagConsistency();
+                                notifyDataChanged();
+                            }
+                            @Override
+                            public void onError(String error) {
+                                Log.e("GenerarData", "Error refrescando etiquetas: " + error);
+                                listaEtiquetas = new ArrayList<>();
+                                notifyDataChanged();
+                            }
+                        });
+                    }
+                    @Override
+                    public void onError(String error) {
+                        Log.e("GenerarData", "Error refrescando notas: " + error);
+                        listaNotas = new ArrayList<>();
+                        notifyDataChanged();
+                    }
+                });
+            }
+        }
     }
 }

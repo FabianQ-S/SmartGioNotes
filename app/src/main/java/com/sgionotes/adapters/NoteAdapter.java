@@ -1,12 +1,10 @@
 package com.sgionotes.adapters;
-
 import android.content.Context;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
@@ -15,7 +13,6 @@ import com.google.android.material.chip.ChipGroup;
 import com.sgionotes.R;
 import com.sgionotes.models.Tag;
 import com.sgionotes.models.Note;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,20 +21,16 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
     private Context context;
     private List<Note> listaNotas;
     private OnItemClickListener listener;
-
     public void setOnItemClickListener(OnItemClickListener listener) {
         this.listener = listener;
     }
-
     public interface OnItemClickListener {
         void onItemClick(Note nota);
     }
-
     public NoteAdapter(Context context, List<Note> listaNotas) {
         this.context = context;
         this.listaNotas = listaNotas;
     }
-
     @Override
     public NotaViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View vista = LayoutInflater.from(parent.getContext())
@@ -52,37 +45,32 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
         holder.txtIdNota.setText(String.valueOf(nota.getId()));
         holder.txtTitulo.setText(nota.getTitulo());
         holder.txtContenido.setText(nota.getContenido());
-
-        // Limpiar chips anteriores
         holder.chipGroup.removeAllViews();
         holder.chipGroup.setVisibility(View.GONE);
 
-        // Mostrar etiquetas si existen tagIds válidos
         if (nota.getTagIds() != null && !nota.getTagIds().isEmpty()) {
-            // Filtrar etiquetas válidas (que realmente existen)
-            List<String> validTagIds = getValidTagIds(nota.getTagIds());
+            int validTagCount = com.sgionotes.models.GenerarData.getInstancia().getValidTagCountForNote(nota);
 
-            if (!validTagIds.isEmpty()) {
+            if (validTagCount > 0) {
                 holder.chipGroup.setVisibility(View.VISIBLE);
                 LayoutInflater inflater = LayoutInflater.from(context);
                 Chip chip = (Chip) inflater.inflate(R.layout.layout_item_chip, holder.chipGroup, false);
                 chip.setClickable(false);
                 chip.setCheckable(false);
 
-                // Actualizar el contador con etiquetas válidas únicamente
-                int validCount = validTagIds.size();
-                chip.setText(validCount + " etiqueta" + (validCount > 1 ? "s" : ""));
+                // MostrarContadorActualizado
+                chip.setText(validTagCount + " etiqueta" + (validTagCount > 1 ? "s" : ""));
                 holder.chipGroup.addView(chip);
-
-                // Actualizar la nota con las etiquetas válidas para mantener consistencia
+                List<String> validTagIds = getValidTagIds(nota.getTagIds());
                 if (validTagIds.size() != nota.getTagIds().size()) {
                     nota.setTagIds(validTagIds);
-                    // Notificar a GenerarData que hubo cambios en las etiquetas
-                    com.sgionotes.models.GenerarData.getInstancia().forceNotifyDataChanged();
+                    updateNoteInFirebase(nota);
                 }
             } else {
-                // Si no hay etiquetas válidas, limpiar la lista de tagIds de la nota
-                nota.setTagIds(new ArrayList<>());
+                if (!nota.getTagIds().isEmpty()) {
+                    nota.setTagIds(new ArrayList<>());
+                    updateNoteInFirebase(nota);
+                }
             }
         }
 
@@ -92,58 +80,64 @@ public class NoteAdapter extends RecyclerView.Adapter<NoteAdapter.NotaViewHolder
             }
         });
     }
-
-    // Método para validar que las etiquetas realmente existen
     private List<String> getValidTagIds(List<String> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
             return new ArrayList<>();
         }
-
-        // Obtener lista actual de etiquetas disponibles desde GenerarData
-        List<Tag> availableTags = com.sgionotes.models.GenerarData.getInstancia().getListaEtiquetas();
-        List<String> availableTagIds = new ArrayList<>();
-
-        if (availableTags != null) {
-            for (Tag tag : availableTags) {
-                if (tag.getId() != null && !tag.getId().isEmpty()) {
-                    availableTagIds.add(tag.getId());
+        List<String> validTagIds = new ArrayList<>();
+        List<Tag> allTags = com.sgionotes.models.GenerarData.getInstancia().getListaEtiquetas();
+        if (allTags != null) {
+            for (String tagId : tagIds) {
+                boolean tagExists = false;
+                for (Tag tag : allTags) {
+                    if (tag.getId() != null && tag.getId().equals(tagId)) {
+                        tagExists = true;
+                        break;
+                    }
+                }
+                if (tagExists) {
+                    validTagIds.add(tagId);
                 }
             }
         }
 
-        // Filtrar solo los IDs que realmente existen
-        List<String> validIds = new ArrayList<>();
-        for (String tagId : tagIds) {
-            if (tagId != null && !tagId.isEmpty() && availableTagIds.contains(tagId)) {
-                validIds.add(tagId);
-            }
-        }
+        return validTagIds;
+    }
 
-        return validIds;
+    // MetodoParche
+    private void updateNoteInFirebase(Note note) {
+        com.sgionotes.models.GenerarData generarData = com.sgionotes.models.GenerarData.getInstancia();
+        if (generarData.getFirestoreRepository() != null) {
+            generarData.getFirestoreRepository().saveNote(note, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                @Override
+                public void onSuccess() {
+                }
+                @Override
+                public void onError(String error) {
+                }
+            });
+        }
     }
 
     @Override
     public int getItemCount() {
-        return listaNotas.size();
+        return listaNotas != null ? listaNotas.size() : 0;
     }
-
     public void updateNotes(List<Note> newNotes) {
-        this.listaNotas = newNotes;
-        notifyDataSetChanged(); // Forzar actualización completa del adaptador
+        if (newNotes != null) {
+            this.listaNotas = newNotes;
+            notifyDataSetChanged();
+        }
     }
-
     public static class NotaViewHolder extends RecyclerView.ViewHolder {
-        TextView txtIdNota;
-        TextView txtTitulo;
-        TextView txtContenido;
+        TextView txtIdNota, txtTitulo, txtContenido;
         ChipGroup chipGroup;
-
-        public NotaViewHolder(View itemView) {
+        public NotaViewHolder(@NonNull View itemView) {
             super(itemView);
             txtIdNota = itemView.findViewById(R.id.txtIdNota);
             txtTitulo = itemView.findViewById(R.id.txtTitulo);
             txtContenido = itemView.findViewById(R.id.txtContenido);
-            chipGroup = itemView.findViewById(R.id.chipGroupEtiquetas);
+            chipGroup = itemView.findViewById(R.id.chipGroupEtiquetas); // Corregido el ID
         }
     }
 }

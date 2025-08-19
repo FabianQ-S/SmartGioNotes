@@ -36,7 +36,6 @@ public class LoginActivity extends AppCompatActivity {
         // InicializarFirebase
         mAuth = FirebaseAuth.getInstance();
         firestoreRepository = new FirestoreRepository(this);
-
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
             Log.d("LoginActivity", "Usuario ya autenticado: " + currentUser.getEmail());
@@ -48,7 +47,6 @@ public class LoginActivity extends AppCompatActivity {
         txtPassword = findViewById(R.id.txtPassword);
         btnLogin = findViewById(R.id.btnLogin);
         loginMain = findViewById(R.id.loginMain);
-
         if (registroExitoso) {
             Snackbar.make(loginMain, "Cuenta creada. Inicia sesión con tus credenciales", Snackbar.LENGTH_LONG).show();
         }

@@ -49,23 +49,19 @@ public class TagsAdapter extends RecyclerView.Adapter<TagsAdapter.TagViewHolder>
     public int getItemCount() {
         return listaTags != null ? listaTags.size() : 0;
     }
-
-    // Método seguro para eliminar etiqueta
     public void removeTag(int position) {
         if (position >= 0 && position < listaTags.size()) {
             Tag removedTag = listaTags.get(position);
             listaTags.remove(position);
             notifyItemRemoved(position);
             notifyItemRangeChanged(position, listaTags.size());
-
-            // Notificar al listener
             if (deleteListener != null) {
                 deleteListener.onTagDelete(removedTag, position);
             }
         }
     }
 
-    // Método para actualizar la lista de etiquetas
+    // ActualizarListaEtiuetas
     public void updateTags(List<Tag> newTags) {
         if (newTags != null) {
             this.listaTags = newTags;

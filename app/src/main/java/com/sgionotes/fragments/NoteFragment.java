@@ -46,8 +46,6 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
                         Intent data = result.getData();
                         boolean esNueva = data.getBooleanExtra("esNueva", false);
                         if (esNueva) {
-                            // No guardar aquí - DetailNoteActivity ya guarda en onPause
-                            // Solo refrescar la lista
                             if (generarData != null) {
                                 generarData.refreshDataForCurrentUser();
                             }
@@ -73,12 +71,9 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
 
         generarData = GenerarData.getInstance();
         generarData.addDataChangeListener(this);
-
-        //NotasActivas
         listaNotas = getActiveNotes();
         notaAdapter = new NoteAdapter(getContext(), listaNotas);
         recyclerNotas.setAdapter(notaAdapter);
-
         notaAdapter.setOnItemClickListener(nota -> {
             int position = listaNotas.indexOf(nota);
             Intent intent = new Intent(getContext(), DetailNoteActivity.class);
@@ -87,7 +82,6 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
             intent.putExtra("contenido", nota.getContenido());
             intent.putExtra("estaCreado", true);
             intent.putExtra("position", position);
-            // Pasar los IDs de las etiquetas en lugar de los nombres
             if (nota.getTagIds() != null && !nota.getTagIds().isEmpty()) {
                 ArrayList<String> etiquetasIds = new ArrayList<>(nota.getTagIds());
                 intent.putStringArrayListExtra("etiquetas", etiquetasIds);

@@ -91,7 +91,7 @@ public class TagFragment extends Fragment implements GenerarData.DataChangeListe
         if (generarData != null) {
             listaEtiquetas = generarData.getListaEtiquetas();
             if (tagAdapter != null) {
-                tagAdapter.notifyDataSetChanged();
+                tagAdapter.updateTagsList();
             }
         }
     }
@@ -102,15 +102,16 @@ public class TagFragment extends Fragment implements GenerarData.DataChangeListe
             generarData.removeDataChangeListener(this);
         }
     }
+
     @Override
     public void onDataChanged() {
         if (getActivity() != null) {
             getActivity().runOnUiThread(() -> {
                 if (generarData != null) {
-                    listaEtiquetas = generarData.getListaEtiquetas();
+                    List<Tag> updatedTags = generarData.getListaEtiquetas();
+                    listaEtiquetas = updatedTags;
                     if (tagAdapter != null) {
-                        tagAdapter.notifyDataSetChanged();
-                        android.util.Log.d("TagFragment", "Datos actualizados - mostrando " + listaEtiquetas.size() + " etiquetas");
+                        tagAdapter.updateTagsList();
                     }
                 }
             });

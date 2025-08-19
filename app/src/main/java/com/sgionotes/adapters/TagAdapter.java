@@ -40,16 +40,13 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull TagViewHolder holder, int position) {
-        // Validación de índice para prevenir crashes
         if (position < 0 || position >= listaTags.size()) {
             return;
         }
-
         Tag tag = listaTags.get(position);
         if (tag == null) {
             return;
         }
-
         holder.etTagText.setText(tag.getDisplayText());
 
         // VerificacionDeFavorito
@@ -62,7 +59,6 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         }
 
         holder.btnMore.setOnClickListener(v -> showPopupMenu(v, position));
-
         holder.etTagText.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_DONE) {
                 finishEditing(holder, position);
@@ -70,7 +66,6 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             }
             return false;
         });
-
         holder.etTagText.setOnFocusChangeListener((v, hasFocus) -> {
             if (!hasFocus) {
                 finishEditing(holder, position);
@@ -82,28 +77,22 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
     public int getItemCount() {
         return listaTags.size();
     }
-
     private void showPopupMenu(View anchor, int position) {
-        // Validación adicional para prevenir crashes
         if (position < 0 || position >= listaTags.size()) {
             return;
         }
-
         View popupView = LayoutInflater.from(context).inflate(R.layout.popup_menu_tag, null, false);
 
         // PopupMedir
         popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
         int popupWidth = popupView.getMeasuredWidth();
-
         PopupWindow popupWindow = new PopupWindow(popupView,
             ViewGroup.LayoutParams.WRAP_CONTENT,
             ViewGroup.LayoutParams.WRAP_CONTENT, true);
-
         LinearLayout menuAddFavorite = popupView.findViewById(R.id.menuAddFavorite);
         LinearLayout menuEdit = popupView.findViewById(R.id.menuEdit);
         LinearLayout menuDelete = popupView.findViewById(R.id.menuDelete);
 
-        // Verificar que el índice sigue siendo válido
         if (position >= listaTags.size()) {
             popupWindow.dismiss();
             return;
@@ -114,7 +103,6 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             popupWindow.dismiss();
             return;
         }
-
         TextView favoriteText = menuAddFavorite.findViewById(android.R.id.text1);
         if (favoriteText == null) {
             favoriteText = (TextView) ((LinearLayout) menuAddFavorite).getChildAt(1);
@@ -129,10 +117,9 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             String tagName = currentTag.getEtiquetaDescripcion();
             boolean newFavoriteStatus = !currentTag.isFavorite();
 
-            // Actualizar localmente
+            // ActualizarLocalmente
             currentTag.setFavorite(newFavoriteStatus);
 
-            // Guardar en Firestore
             if (currentTag.getId() != null && !currentTag.getId().isEmpty()) {
                 GenerarData.getInstance().getFirestoreRepository()
                         .setTagFavorite(currentTag.getId(), newFavoriteStatus,
@@ -150,7 +137,6 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
 
                                     @Override
                                     public void onError(String error) {
-                                        // Revertir cambio local si falla
                                         currentTag.setFavorite(!newFavoriteStatus);
                                         Toast.makeText(context, "Error al actualizar favorito: " + error, Toast.LENGTH_SHORT).show();
                                     }
@@ -158,34 +144,27 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             }
             popupWindow.dismiss();
         });
-
         menuEdit.setOnClickListener(v -> {
-            // Verificar nuevamente que el índice es válido antes de editar
             if (position < listaTags.size()) {
                 enableEditing(position);
             }
             popupWindow.dismiss();
         });
-
         menuDelete.setOnClickListener(v -> {
             String tagName = currentTag.getEtiquetaDescripcion();
             String tagId = currentTag.getId();
 
-            // Validar que tenemos un ID válido antes de eliminar
+            // ValidarID
             if (tagId == null || tagId.isEmpty()) {
                 Toast.makeText(context, "Error: ID de etiqueta inválido", Toast.LENGTH_SHORT).show();
                 popupWindow.dismiss();
                 return;
             }
-
-            // Usar el método seguro de GenerarData para eliminar etiquetas
             GenerarData.getInstance().removeTag(tagId,
                 new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                     @Override
                     public void onSuccess() {
-                        // La eliminación local ya se maneja en GenerarData.removeTag()
                         Toast.makeText(context, "Etiqueta '" + tagName + "' eliminada", Toast.LENGTH_SHORT).show();
-                        // Actualizar la lista local para reflejar los cambios de forma segura
                         updateTagsListSafely();
                     }
 
@@ -236,78 +215,85 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             }
         }, 100);
     }
-
-    // Método para actualizar la lista de etiquetas después de cambios
     public void updateTagsList() {
         this.listaTags = GenerarData.getInstance().getListaEtiquetas();
         sortTags();
         notifyDataSetChanged();
     }
-
-    // Método seguro para actualizar la lista después de eliminaciones
     private void updateTagsListSafely() {
         try {
             List<Tag> newTagsList = GenerarData.getInstance().getListaEtiquetas();
             if (newTagsList != null) {
-                this.listaTags = newTagsList;
+                this.listaTags.clear();
+                this.listaTags.addAll(newTagsList);
                 sortTags();
-                notifyDataSetChanged();
+                if (context instanceof android.app.Activity) {
+                    ((android.app.Activity) context).runOnUiThread(() -> {
+                        notifyDataSetChanged();
+
+                        // ActualizacionDeVentanas
+                        GenerarData.getInstance().forceNotifyDataChanged();
+                    });
+                }
             }
         } catch (Exception e) {
-            // En caso de error, simplemente recargar desde GenerarData
-            android.os.Handler handler = new android.os.Handler();
-            handler.postDelayed(() -> {
-                try {
-                    this.listaTags = GenerarData.getInstance().getListaEtiquetas();
-                    sortTags();
-                    notifyDataSetChanged();
-                } catch (Exception ex) {
-                    // Si aún hay problemas, mostrar mensaje de error
+            if (context instanceof android.app.Activity) {
+                ((android.app.Activity) context).runOnUiThread(() -> {
                     Toast.makeText(context, "Error actualizando lista de etiquetas", Toast.LENGTH_SHORT).show();
-                }
-            }, 100);
+                    GenerarData.getInstance().refreshData();
+                });
+            }
         }
     }
 
     private void finishEditing(TagViewHolder holder, int position) {
-        String newText = holder.etTagText.getText().toString().trim();
-        if (!newText.isEmpty()) {
-            Tag tag = listaTags.get(position);
-            String oldText = tag.getEtiquetaDescripcion();
-
-            // Actualizar localmente
-            tag.setEtiquetaDescripcion(newText);
-
-            // Guardar en Firestore si tiene ID
-            if (tag.getId() != null && !tag.getId().isEmpty()) {
-                GenerarData.getInstance().getFirestoreRepository()
-                        .saveTag(tag, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
-                            @Override
-                            public void onSuccess() {
-                                Toast.makeText(context, "Etiqueta actualizada", Toast.LENGTH_SHORT).show();
-                            }
-
-                            @Override
-                            public void onError(String error) {
-                                // Revertir cambio local si falla
-                                tag.setEtiquetaDescripcion(oldText);
-                                Toast.makeText(context, "Error al actualizar etiqueta: " + error, Toast.LENGTH_SHORT).show();
-                                notifyItemChanged(position);
-                            }
-                        });
-            } else {
-                Toast.makeText(context, "Etiqueta actualizada localmente", Toast.LENGTH_SHORT).show();
-            }
+        if (position < 0 || position >= listaTags.size()) {
+            return;
         }
 
-        holder.etTagText.setFocusable(false);
-        holder.etTagText.setFocusableInTouchMode(false);
-        holder.etTagText.clearFocus();
+        String newText = holder.etTagText.getText().toString().trim();
+        Tag tag = listaTags.get(position);
 
+        if (tag == null) {
+            return;
+        }
+
+        if (!newText.isEmpty() && !newText.equals(tag.getEtiquetaDescripcion())) {
+            tag.setEtiquetaDescripcion(newText);
+
+            // GuardarFirestore
+            GenerarData.getInstance().getFirestoreRepository()
+                    .saveTag(tag, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+                        @Override
+                        public void onSuccess() {
+                            if (context instanceof android.app.Activity) {
+                                ((android.app.Activity) context).runOnUiThread(() -> {
+                                    Toast.makeText(context, "Etiqueta actualizada", Toast.LENGTH_SHORT).show();
+                                    notifyItemChanged(position);
+                                    GenerarData.getInstance().forceNotifyDataChanged();
+                                });
+                            }
+                        }
+
+                        @Override
+                        public void onError(String error) {
+                            if (context instanceof android.app.Activity) {
+                                ((android.app.Activity) context).runOnUiThread(() -> {
+                                    // RevertirCambio
+                                    holder.etTagText.setText(tag.getEtiquetaDescripcion());
+                                    Toast.makeText(context, "Error al actualizar etiqueta: " + error, Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        }
+                    });
+        }
         InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(holder.etTagText.getWindowToken(), 0);
-    }
+        if (imm != null) {
+            imm.hideSoftInputFromWindow(holder.etTagText.getWindowToken(), 0);
+        }
 
+        holder.etTagText.clearFocus();
+    }
     public static class TagViewHolder extends RecyclerView.ViewHolder {
         EditText etTagText;
         ImageButton btnMore;
@@ -318,8 +304,8 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
             super(itemView);
             etTagText = itemView.findViewById(R.id.etTagText);
             btnMore = itemView.findViewById(R.id.btnMore);
-            ivFavoriteIcon = itemView.findViewById(R.id.ivFavoriteIcon); // Iicono de favorito
-            ivTagIcon = itemView.findViewById(R.id.ivTagIcon); // Icono de etiqueta
+            ivFavoriteIcon = itemView.findViewById(R.id.ivFavoriteIcon);
+            ivTagIcon = itemView.findViewById(R.id.ivTagIcon);
         }
     }
 }

@@ -38,15 +38,31 @@ public class FirestoreRepository {
         authStateListener = firebaseAuth -> {
             FirebaseUser user = firebaseAuth.getCurrentUser();
             String newUserId = user != null ? user.getUid() : null;
-
             if (!java.util.Objects.equals(currentUserId, newUserId)) {
                 Log.d(TAG, "Usuario cambió de: " + currentUserId + " a: " + newUserId);
-                previousUserId = currentUserId; // Guardar el usuario anterior
-                currentUserId = newUserId;
-                if (context instanceof android.app.Activity) {
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        GenerarData.getInstancia().onUserChanged(currentUserId);
-                    });
+                if (currentUserId != null && newUserId != null && !currentUserId.equals(newUserId)) {
+                    previousUserId = currentUserId;
+                    currentUserId = newUserId;
+                    if (context instanceof android.app.Activity) {
+                        ((android.app.Activity) context).runOnUiThread(() -> {
+                            GenerarData.getInstancia().onUserChanged(currentUserId);
+                        });
+                    }
+                } else if (currentUserId == null && newUserId != null) {
+                    //EstablecerUsuario
+                    currentUserId = newUserId;
+                    Log.d(TAG, "Usuario inicial establecido: " + newUserId);
+                } else if (currentUserId != null && newUserId == null) {
+                    //LogoutUsuario
+                    previousUserId = currentUserId;
+                    currentUserId = null;
+                    if (context instanceof android.app.Activity) {
+                        ((android.app.Activity) context).runOnUiThread(() -> {
+                            GenerarData.getInstancia().clearUserData();
+                        });
+                    }
+                } else {
+                    currentUserId = newUserId;
                 }
             }
         };
@@ -57,7 +73,7 @@ public class FirestoreRepository {
         String userId = user != null ? user.getUid() : null;
         if (!java.util.Objects.equals(currentUserId, userId)) {
             Log.d(TAG, "Usuario detectado como cambiado en getCurrentUserId(): " + currentUserId + " -> " + userId);
-            previousUserId = currentUserId; // Guardar el usuario anterior
+            previousUserId = currentUserId;
             currentUserId = userId;
         }
         return userId;
@@ -185,12 +201,10 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado o ID de etiqueta inválido");
             return;
         }
-
-        // Primero remover la etiqueta de todas las notas que la tengan
         removeTagFromAllNotes(tagId, new SimpleCallback() {
             @Override
             public void onSuccess() {
-                // Luego eliminar la etiqueta
+                // EliminarLaEtiqueta
                 db.collection(COLLECTION_USERS)
                         .document(userId)
                         .collection(COLLECTION_TAGS)
@@ -198,14 +212,10 @@ public class FirestoreRepository {
                         .delete()
                         .addOnSuccessListener(aVoid -> {
                             Log.d(TAG, "Tag eliminado exitosamente");
-
-                            // Limpiar referencias locales inmediatamente para evitar crasheos
                             if (context instanceof android.app.Activity) {
                                 ((android.app.Activity) context).runOnUiThread(() -> {
                                     GenerarData generarData = GenerarData.getInstancia();
                                     generarData.cleanupDeletedTagReferences(tagId);
-
-                                    // Refrescar datos completos para asegurar sincronización
                                     generarData.refreshData();
                                 });
                             }
@@ -217,15 +227,13 @@ public class FirestoreRepository {
                             callback.onError("Error al eliminar etiqueta: " + e.getMessage());
                         });
             }
-
             @Override
             public void onError(String error) {
                 callback.onError("Error preparando eliminación: " + error);
             }
         });
     }
-
-    // Método auxiliar para remover una etiqueta de todas las notas
+    // MetodoAuxiliarEliminarEtiqueta
     private void removeTagFromAllNotes(String tagId, SimpleCallback callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
@@ -233,33 +241,26 @@ public class FirestoreRepository {
             return;
         }
 
-        // Obtener todas las notas que contienen esta etiqueta
+        // ObtenerNotas
         getAllNotesIncludingTrash(new DataCallback<List<Note>>() {
             @Override
             public void onSuccess(List<Note> notes) {
                 List<Note> notesToUpdate = new ArrayList<>();
-
-                // Filtrar notas que contienen la etiqueta a eliminar
                 for (Note note : notes) {
                     List<String> tagIds = note.getTagIds();
                     if (tagIds != null && tagIds.contains(tagId)) {
-                        // Crear copia de la nota y remover la etiqueta
                         List<String> newTagIds = new ArrayList<>(tagIds);
                         newTagIds.remove(tagId);
                         note.setTagIds(newTagIds);
                         notesToUpdate.add(note);
                     }
                 }
-
                 if (notesToUpdate.isEmpty()) {
                     callback.onSuccess();
                     return;
                 }
-
-                // Actualizar todas las notas afectadas
                 updateNotesInBatch(notesToUpdate, 0, callback);
             }
-
             @Override
             public void onError(String error) {
                 callback.onError(error);
@@ -267,24 +268,21 @@ public class FirestoreRepository {
         });
     }
 
-    // Método auxiliar para actualizar notas en lotes
+    // MetodoAuxiliarActualizarNotas
     private void updateNotesInBatch(List<Note> notes, int index, SimpleCallback callback) {
         if (index >= notes.size()) {
             callback.onSuccess();
             return;
         }
-
         Note note = notes.get(index);
         saveNote(note, new SimpleCallback() {
             @Override
             public void onSuccess() {
                 updateNotesInBatch(notes, index + 1, callback);
             }
-
             @Override
             public void onError(String error) {
                 Log.e(TAG, "Error actualizando nota durante eliminación de etiqueta: " + error);
-                // Continuar con la siguiente nota aunque una falle
                 updateNotesInBatch(notes, index + 1, callback);
             }
         });
@@ -337,7 +335,6 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-
         Log.d(TAG, "Obteniendo todas las notas (incluida papelera) para usuario: " + userId);
         db.collection(COLLECTION_USERS)
                 .document(userId)
@@ -348,12 +345,9 @@ public class FirestoreRepository {
                     for (QueryDocumentSnapshot document : queryDocumentSnapshots) {
                         Note note = document.toObject(Note.class);
                         note.setId(document.getId());
-
-                        // Log para debug de etiquetas
                         List<String> tagIds = note.getTagIds();
                         Log.d(TAG, "Nota procesada: " + note.getId() + " isTrash: " + note.isTrash() +
                               " tags: " + (tagIds != null ? tagIds.size() : 0));
-
                         notes.add(note);
                     }
                     notes.sort((n1, n2) -> Long.compare(n2.getTimestamp(), n1.getTimestamp()));
@@ -418,13 +412,11 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
-
         Log.d(TAG, "Guardando nota para usuario: " + userId);
         Log.d(TAG, "Nota tiene " + (note.getTagIds() != null ? note.getTagIds().size() : 0) + " etiquetas");
-
         note.setTimestamp(System.currentTimeMillis());
 
-        // Crear un mapa para asegurar que todos los campos se guarden
+        // MapaDatosGuardados
         java.util.Map<String, Object> noteData = new java.util.HashMap<>();
         noteData.put("titulo", note.getTitulo());
         noteData.put("contenido", note.getContenido());
@@ -433,7 +425,6 @@ public class FirestoreRepository {
         noteData.put("isTrash", note.isTrash());
         noteData.put("timestamp", note.getTimestamp());
         noteData.put("gpsLocation", note.getGpsLocation());
-
         if (note.getId() == null || note.getId().isEmpty()) {
             Log.d(TAG, "Creando nueva nota en Firestore");
             db.collection(COLLECTION_USERS)
@@ -511,8 +502,7 @@ public class FirestoreRepository {
                             note.setId(documentSnapshot.getId());
                             note.setTrash(isTrash);
                             note.setTimestamp(System.currentTimeMillis());
-
-                            // Usar Map para asegurar que todos los campos se preserven
+                            // UsarMap
                             java.util.Map<String, Object> noteData = new java.util.HashMap<>();
                             noteData.put("titulo", note.getTitulo());
                             noteData.put("contenido", note.getContenido());
@@ -564,8 +554,6 @@ public class FirestoreRepository {
                         if (note != null) {
                             note.setId(documentSnapshot.getId());
                             note.setFavorite(isFavorite);
-
-                            // Usar Map para asegurar que todos los campos se preserven
                             java.util.Map<String, Object> noteData = new java.util.HashMap<>();
                             noteData.put("titulo", note.getTitulo());
                             noteData.put("contenido", note.getContenido());
@@ -600,19 +588,16 @@ public class FirestoreRepository {
                     callback.onError("Error al obtener nota: " + e.getMessage());
                 });
     }
-
     public void getTagsByIds(List<String> tagIds, DataCallback<List<Tag>> callback) {
         String userId = getCurrentUserId();
         if (userId == null) {
             callback.onError("Usuario no autenticado");
             return;
         }
-
         if (tagIds == null || tagIds.isEmpty()) {
             callback.onSuccess(new ArrayList<>());
             return;
         }
-
         Log.d(TAG, "Obteniendo tags por IDs para usuario: " + userId);
         db.collection(COLLECTION_USERS)
                 .document(userId)
@@ -634,14 +619,12 @@ public class FirestoreRepository {
                     callback.onError("Error al obtener etiquetas: " + e.getMessage());
                 });
     }
-
     public void getNoteById(String noteId, DataCallback<Note> callback) {
         String userId = getCurrentUserId();
         if (userId == null || noteId == null || noteId.isEmpty()) {
             callback.onError("Usuario no autenticado o ID de nota inválido");
             return;
         }
-
         db.collection(COLLECTION_USERS)
                 .document(userId)
                 .collection(COLLECTION_NOTES)
