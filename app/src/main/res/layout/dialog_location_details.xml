@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="?attr/cardColor">
+
+    <!-- Ubicacion -->
+    <ImageView
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_location_on_24"
+        app:tint="@color/startGradient" />
+
+    <!-- Título -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="Detalles de ubicación"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="?attr/textColor"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Coordenadas:"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="?attr/textColor"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/txtCoordinates"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Lat: 0.000000, Lng: 0.000000"
+        android:textSize="14sp"
+        android:textColor="@color/textSecondary"
+        android:layout_marginBottom="16dp"
+        android:textIsSelectable="true" />
+
+    <!-- Fecha -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Fecha guardada:"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:textColor="?attr/textColor"
+        android:layout_marginBottom="4dp" />
+
+    <TextView
+        android:id="@+id/txtFechaGuardada"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="No disponible"
+        android:textSize="14sp"
+        android:textColor="@color/textSecondary"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Botones -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnEliminarUbicacion"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="Eliminar"
+            android:textColor="@color/red"
+            android:textSize="14sp"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_marginEnd="8dp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCerrar"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="Cerrar"
+            android:textColor="@color/startGradient"
+            android:textSize="14sp"
+            style="@style/Widget.Material3.Button.TextButton" />
+
+    </LinearLayout>
+
+</LinearLayout>

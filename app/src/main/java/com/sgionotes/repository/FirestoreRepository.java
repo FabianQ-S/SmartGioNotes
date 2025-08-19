@@ -346,6 +346,13 @@ public class FirestoreRepository {
                         Note note = document.toObject(Note.class);
                         note.setId(document.getId());
                         List<String> tagIds = note.getTagIds();
+
+                        // Log detallado para debugging de etiquetas
+                        Log.w("TAG_DEBUG", String.format("[FIREBASE_LOAD] NoteID:%s | TagIds from DB: %s (Count:%d)",
+                            note.getId(),
+                            tagIds != null ? String.join(",", tagIds) : "NULL",
+                            tagIds != null ? tagIds.size() : 0));
+
                         Log.d(TAG, "Nota procesada: " + note.getId() + " isTrash: " + note.isTrash() +
                               " tags: " + (tagIds != null ? tagIds.size() : 0));
                         notes.add(note);
@@ -412,19 +419,88 @@ public class FirestoreRepository {
             callback.onError("Usuario no autenticado");
             return;
         }
+
+        // CRÍTICO: Validación para prevenir guardados destructivos
+        if (note == null) {
+            callback.onError("Nota no puede ser null");
+            return;
+        }
+
+        // VALIDACIÓN CRÍTICA: Si la nota tiene ID pero no tiene etiquetas cargadas,
+        // verificar si debería tener etiquetas antes de guardar
+        if (note.getId() != null && !note.getId().isEmpty()) {
+            List<String> currentTagIds = note.getTagIds();
+            if (currentTagIds == null || currentTagIds.isEmpty()) {
+                // CRÍTICO: Antes de guardar con listas vacías, verificar si la nota
+                // realmente debe tener listas vacías o si simplemente no están cargadas
+                Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_WARNING] NoteID:%s | Attempting to save with empty tagIds - may cause data loss", note.getId()));
+
+                // Verificar si esta nota tiene etiquetas en Firebase antes de sobrescribir
+                getNoteById(note.getId(), new DataCallback<Note>() {
+                    @Override
+                    public void onSuccess(Note existingNote) {
+                        if (existingNote != null && existingNote.getTagIds() != null && !existingNote.getTagIds().isEmpty()) {
+                            // La nota existente tiene etiquetas, pero la nota a guardar no
+                            // Preservar las etiquetas existentes para evitar pérdida de datos
+                            Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_PRESERVE] NoteID:%s | Preserving existing tagIds: %d",
+                                note.getId(), existingNote.getTagIds().size()));
+                            note.setTagIds(existingNote.getTagIds());
+                        }
+                        // Continuar con el guardado normal
+                        performSaveNote(note, callback, userId);
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        // Si hay error obteniendo la nota existente, continuar con el guardado
+                        // pero con advertencia
+                        Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_FORCE] NoteID:%s | Cannot verify existing tagIds, proceeding with save", note.getId()));
+                        performSaveNote(note, callback, userId);
+                    }
+                });
+                return;
+            }
+        }
+
+        // Si llegamos aquí, es seguro proceder con el guardado
+        performSaveNote(note, callback, userId);
+    }
+
+    private void performSaveNote(Note note, SimpleCallback callback, String userId) {
         Log.d(TAG, "Guardando nota para usuario: " + userId);
         Log.d(TAG, "Nota tiene " + (note.getTagIds() != null ? note.getTagIds().size() : 0) + " etiquetas");
         note.setTimestamp(System.currentTimeMillis());
 
-        // MapaDatosGuardados
+        // SOLUCIÓN: Crear el mapa de datos con validación estricta de TagIds
         java.util.Map<String, Object> noteData = new java.util.HashMap<>();
-        noteData.put("titulo", note.getTitulo());
-        noteData.put("contenido", note.getContenido());
-        noteData.put("tagIds", note.getTagIds() != null ? note.getTagIds() : new ArrayList<>());
+        noteData.put("titulo", note.getTitulo() != null ? note.getTitulo() : "");
+        noteData.put("contenido", note.getContenido() != null ? note.getContenido() : "");
+
+        // CRÍTICO: Asegurar que TagIds se serializa correctamente
+        List<String> validTagIds = note.getTagIds();
+        if (validTagIds == null) {
+            validTagIds = new ArrayList<>();
+        }
+        // Filtrar TagIds nulos o vacíos
+        List<String> cleanTagIds = new ArrayList<>();
+        for (String tagId : validTagIds) {
+            if (tagId != null && !tagId.trim().isEmpty()) {
+                cleanTagIds.add(tagId.trim());
+            }
+        }
+        noteData.put("tagIds", cleanTagIds);
+
+        // Log crítico para verificar lo que se está guardando
+        Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_DATA] NoteID:%s | TagIds to save: %s (Count:%d)",
+            note.getId() != null ? note.getId() : "NEW",
+            String.join(",", cleanTagIds),
+            cleanTagIds.size()));
+
         noteData.put("isFavorite", note.isFavorite());
         noteData.put("isTrash", note.isTrash());
         noteData.put("timestamp", note.getTimestamp());
         noteData.put("gpsLocation", note.getGpsLocation());
+
         if (note.getId() == null || note.getId().isEmpty()) {
             Log.d(TAG, "Creando nueva nota en Firestore");
             db.collection(COLLECTION_USERS)
@@ -434,10 +510,13 @@ public class FirestoreRepository {
                     .addOnSuccessListener(documentReference -> {
                         note.setId(documentReference.getId());
                         Log.d(TAG, "Nota creada con ID: " + documentReference.getId());
+                        Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_NEW_SUCCESS] NoteID:%s | TagIds saved: %d",
+                            documentReference.getId(), cleanTagIds.size()));
                         callback.onSuccess();
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "Error creando nota", e);
+                        Log.e("TAG_DEBUG", "[FIREBASE_SAVE_NEW_ERROR] " + e.getMessage());
                         callback.onError("Error al crear nota: " + e.getMessage());
                     });
         } else {
@@ -449,10 +528,13 @@ public class FirestoreRepository {
                     .set(noteData)
                     .addOnSuccessListener(aVoid -> {
                         Log.d(TAG, "Nota actualizada");
+                        Log.w("TAG_DEBUG", String.format("[FIREBASE_SAVE_UPDATE_SUCCESS] NoteID:%s | TagIds saved: %d",
+                            note.getId(), cleanTagIds.size()));
                         callback.onSuccess();
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "Error actualizando nota", e);
+                        Log.e("TAG_DEBUG", "[FIREBASE_SAVE_UPDATE_ERROR] " + note.getId() + " - " + e.getMessage());
                         callback.onError("Error al actualizar nota: " + e.getMessage());
                     });
         }

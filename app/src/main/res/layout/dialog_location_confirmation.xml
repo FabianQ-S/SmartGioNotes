@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="?attr/cardColor">
+
+    <!-- IconUbicacion -->
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_location_on_24"
+        app:tint="@color/startGradient" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="¡Guarda esta ubicación como recuerdo!"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="?attr/textColor"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <!-- Descripción -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:text="Tu ubicación actual se guardará junto con esta nota para recordar dónde estuviste."
+        android:textSize="14sp"
+        android:textColor="@color/textSecondary"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnAgregarUbicacion"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Agregar ubicación"
+        android:textColor="@color/white"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:backgroundTint="@color/startGradient"
+        app:cornerRadius="12dp"
+        android:layout_marginBottom="8dp" />
+
+    <!-- Cancelar -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCancelar"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:text="Cancelar"
+        android:textColor="@color/textSecondary"
+        android:textSize="14sp"
+        style="@style/Widget.Material3.Button.TextButton"
+        app:cornerRadius="12dp" />
+
+</LinearLayout>

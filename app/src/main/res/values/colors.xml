@@ -15,9 +15,7 @@
 
     <color name="textSecondary">#6E6E73</color>
     <color name="accent">#FFB84C</color>
-
     <color name="toolbarTitleBackground">?attr/boxBackgroundColor</color>
-
     <color name="alternateColor">#000</color>
 
     <color name="startGradient">#4DD0E1</color>
