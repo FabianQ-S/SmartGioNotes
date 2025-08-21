@@ -4,20 +4,36 @@
 </p>
 
 # SmartGioNotes 📍🗺️
- GioNotes permite a los usuarios crear y gestionar notas vinculadas a ubicaciones geográficas. La aplicacion ,pensada para los mas viajeros te permite capturar tus ideas en cada momento de tu viaje y llevarte ese recuerdo contigo permanente!!!!
+App para crear, organizar y recordar notas asociadas a tu viaje y contexto. Pensada para viajeros: captura ideas y recuerdos rápido, guárdalos con etiquetas y mantenlos ordenados.
 
-## Tecnologias usadas para el app ⚙️
-* SDK android Studio 
-* Firebase services
-* Gradle Compiled 
-* Java Para Desarrollo
-* MaterialForms
+## ✨ Funcionalidades Clave (Actuales)
+* Registro e inicio de sesión con Firebase Auth (email/password)
+* Creación y edición de notas (título + contenido)
+* Etiquetas (tags) para organizar notas
+* Marcado de notas y etiquetas como favoritas
+* Papelera (eliminación lógica y restauración)
+* Limpieza automática de etiquetas eliminadas en notas
+* Sincronización con Firestore (cache offline habilitada)
+* Actualización periódica (refresh cada 30s aprox.)
+* Perfil local con nombre e ícono personalizable
+
+## 🧱 Estructura Básica
+`activities` (pantallas) · `fragments` (listas y gestión) · `repository` (Firestore) · `models` (Note, Tag, UserProfile) · `adapters` (UI listas) · `utils` (perfil) · `dialogs`.
+
+## 🛠️ Stack
+Java · Android (Material) · Firebase Auth + Firestore · Gradle
+
+## 📄 Documentación Técnica Ampliada
+Ver: [ARQUITECTURA.md](./ARQUITECTURA.md)
+
+## Tecnologias usadas ⚙️
+* Android SDK / Material Components
+* Firebase (Auth, Firestore)
+* Gradle
+* Java
   
 ## Herramientas de desarrollo 🔨
-* Android Studio "Narwhal"
-* Postman
-* GitHub Desktop
-* Notion
+Android Studio · GitHub · Notion (organización)
 
 ---
 ## *Docente e Institución* 🗣️
