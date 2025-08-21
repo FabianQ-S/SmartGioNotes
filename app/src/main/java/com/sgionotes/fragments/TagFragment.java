@@ -63,9 +63,6 @@ public class TagFragment extends Fragment implements GenerarData.DataChangeListe
                     .saveTag(nueva, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                         @Override
                         public void onSuccess() {
-                            listaEtiquetas.add(0, nueva);
-                            tagAdapter.notifyItemInserted(0);
-                            recyclerTags.scrollToPosition(0);
                             txtTagNew.setText("");
                             txtTagNew.clearFocus();
                             InputMethodManager imm = (InputMethodManager) requireContext().getSystemService(Context.INPUT_METHOD_SERVICE);

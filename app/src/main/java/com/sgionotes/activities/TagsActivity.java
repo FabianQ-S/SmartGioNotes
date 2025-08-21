@@ -22,7 +22,7 @@ public class TagsActivity extends AppCompatActivity {
     private TextView tvFavoritesHeader;
     private TextView tvAllTagsHeader;
     private List<Tag> allTags;
-    private ArrayList<String> selectedTagsFromNote;
+    private ArrayList<String> selectedTagIds;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,10 +38,10 @@ public class TagsActivity extends AppCompatActivity {
         initializeViews();
         Intent intent = getIntent();
         if (intent != null) {
-            selectedTagsFromNote = intent.getStringArrayListExtra("tags");
-            if (selectedTagsFromNote == null) {
-                selectedTagsFromNote = new ArrayList<>();
-            }
+            selectedTagIds = intent.getStringArrayListExtra("tags");
+            if (selectedTagIds == null) selectedTagIds = new ArrayList<>();
+        } else {
+            selectedTagIds = new ArrayList<>();
         }
 
         loadAllTags();
@@ -122,7 +122,7 @@ public class TagsActivity extends AppCompatActivity {
         chip.setTextColor(getResources().getColor(R.color.chipText, getTheme()));
         chip.setChipStrokeColorResource(R.color.chipStrokeColor);
         chip.setChipStrokeWidth(2f);
-        boolean isSelected = selectedTagsFromNote.contains(tag.getEtiquetaDescripcion());
+    boolean isSelected = selectedTagIds.contains(tag.getId());
         chip.setCheckable(true);
         chip.setChecked(isSelected);
 
@@ -143,15 +143,13 @@ public class TagsActivity extends AppCompatActivity {
                 chip.setTextColor(getResources().getColor(R.color.chipSelectedText, getTheme()));
                 chip.setCheckedIconVisible(true);
                 chip.setCheckedIconTint(getResources().getColorStateList(R.color.chipSelectedText, getTheme()));
-                if (!selectedTagsFromNote.contains(tag.getEtiquetaDescripcion())) {
-                    selectedTagsFromNote.add(tag.getEtiquetaDescripcion());
-                }
+                if (tag.getId() != null && !selectedTagIds.contains(tag.getId())) selectedTagIds.add(tag.getId());
             } else {
                 // Deseleccionar
                 chip.setChipBackgroundColorResource(R.color.chipBackground);
                 chip.setTextColor(getResources().getColor(R.color.chipText, getTheme()));
                 chip.setCheckedIconVisible(false);
-                selectedTagsFromNote.remove(tag.getEtiquetaDescripcion());
+                if (tag.getId() != null) selectedTagIds.remove(tag.getId());
             }
         });
 
@@ -173,7 +171,7 @@ public class TagsActivity extends AppCompatActivity {
 
     private void sendResultBack() {
         Intent resultIntent = new Intent();
-        resultIntent.putStringArrayListExtra("selectedTags", selectedTagsFromNote);
+    resultIntent.putStringArrayListExtra("selectedTags", selectedTagIds);
         setResult(RESULT_OK, resultIntent);
     }
 

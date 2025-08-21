@@ -110,12 +110,30 @@ public class NoteFragment extends Fragment implements GenerarData.DataChangeList
     public void onResume() {
         super.onResume();
         if (generarData != null) {
-            listaNotas = getActiveNotes();
-            if (notaAdapter != null) {
-                notaAdapter.updateNotes(listaNotas);
-                notaAdapter.notifyDataSetChanged();
+            List<Note> currentActiveNotes = getActiveNotes();
+            if (listaNotas == null || listaNotas.size() != currentActiveNotes.size() || hasNotesChanged(currentActiveNotes)) {
+                listaNotas = currentActiveNotes;
+                if (notaAdapter != null) {
+                    notaAdapter.updateNotes(listaNotas);
+                    notaAdapter.notifyDataSetChanged();
+                }
             }
         }
+    }
+
+    private boolean hasNotesChanged(List<Note> newNotes) {
+        if (listaNotas == null) return true;
+        if (listaNotas.size() != newNotes.size()) return true;
+
+        for (int i = 0; i < newNotes.size(); i++) {
+            Note newNote = newNotes.get(i);
+            Note oldNote = listaNotas.get(i);
+            if (!newNote.getId().equals(oldNote.getId()) ||
+                newNote.getTimestamp() != oldNote.getTimestamp()) {
+                return true;
+            }
+        }
+        return false;
     }
     @Override
     public void onDestroy() {

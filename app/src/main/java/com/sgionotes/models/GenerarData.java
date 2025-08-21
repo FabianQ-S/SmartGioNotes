@@ -55,6 +55,7 @@ public class GenerarData {
             firestoreRepository = new FirestoreRepository(context);
         }
         loadDataFromFirestore(); //CargarDatos
+    firestoreRepository.startRealtimeListeners();
     }
     private void loadDataFromFirestore() {
         if (firestoreRepository == null) return;
@@ -152,6 +153,26 @@ public class GenerarData {
                 loadDataFromFirestore();
             }
         }
+    }
+    public void updateNotesFromRepository(List<Note> newNotes) {
+        if (newNotes == null) return;
+        if (this.listaNotas == null) {
+            this.listaNotas = new ArrayList<>();
+        } else {
+            this.listaNotas.clear();
+        }
+        this.listaNotas.addAll(newNotes);
+        notifyDataChanged();
+    }
+    public void updateTagsFromRepository(List<Tag> newTags) {
+        if (newTags == null) return;
+        if (this.listaEtiquetas == null) {
+            this.listaEtiquetas = new ArrayList<>();
+        } else {
+            this.listaEtiquetas.clear();
+        }
+        this.listaEtiquetas.addAll(newTags);
+        notifyDataChanged();
     }
     public void updateNoteInLocalList(Note updatedNote) {
         if (listaNotas != null && updatedNote != null && updatedNote.getId() != null) {
@@ -593,5 +614,26 @@ public class GenerarData {
                 });
             }
         }
+    }
+    private long lastDataRefresh = 0;
+    private static final long REFRESH_INTERVAL = 30000; //30segundos
+
+    public boolean shouldRefreshData() {
+        long currentTime = System.currentTimeMillis();
+        return (currentTime - lastDataRefresh) > REFRESH_INTERVAL;
+    }
+
+    public void refreshDataIfNeeded(Context context) {
+        if (shouldRefreshData()) {
+            Log.d("GenerarData", "Refrescando datos - han pasado más de 30 segundos desde la última actualización");
+            refreshData();
+            lastDataRefresh = System.currentTimeMillis();
+        } else {
+            Log.d("GenerarData", "No es necesario refrescar datos - actualización reciente");
+        }
+    }
+
+    public boolean hasDataChangeListener(DataChangeListener listener) {
+        return dataChangeListeners.contains(listener);
     }
 }

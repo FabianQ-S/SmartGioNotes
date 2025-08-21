@@ -108,7 +108,6 @@ public class Note {
     }
 
     public List<String> getTagIds() {
-        // Garantizar que nunca devolvemos null para evitar problemas de serialización en Firebase
         if (tagIds == null) {
             tagIds = new ArrayList<>();
         }
@@ -116,11 +115,10 @@ public class Note {
     }
 
     public void setTagIds(List<String> tagIds) {
-        // Garantizar que siempre tenemos una lista válida
         if (tagIds == null) {
             this.tagIds = new ArrayList<>();
         } else {
-            this.tagIds = new ArrayList<>(tagIds); // Crear copia defensiva
+            this.tagIds = new ArrayList<>(tagIds);
         }
     }
 

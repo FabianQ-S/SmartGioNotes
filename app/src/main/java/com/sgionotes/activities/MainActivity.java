@@ -1,4 +1,5 @@
 package com.sgionotes.activities;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -7,6 +8,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,9 +19,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.fragment.app.Fragment;
+
 import com.google.android.material.navigation.NavigationView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+
 import com.sgionotes.R;
 import com.sgionotes.dialogs.ProfileIconDialog;
 import com.sgionotes.fragments.NoteFragment;
@@ -28,133 +32,152 @@ import com.sgionotes.fragments.TagFragment;
 import com.sgionotes.fragments.TrashFragment;
 import com.sgionotes.models.GenerarData;
 import com.sgionotes.models.UserProfile;
-import com.sgionotes.models.Note;
-import com.sgionotes.models.Tag;
 import com.sgionotes.repository.FirestoreRepository;
 import com.sgionotes.utils.UserProfileManager;
+
 import java.util.Objects;
-import java.util.List;
+
 public class MainActivity extends AppCompatActivity {
+
+    //VariablesUI
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
-    private ActionBarDrawerToggle toggle;
+
+    // VariablesDeAuth
     private FirebaseAuth mAuth;
-    private FirestoreRepository firestoreRepository;
-    private Handler saveHandler;
-    private Runnable saveRunnable;
-    private NoteFragment notes = new NoteFragment();
-    private TagFragment tags = new TagFragment();
-    private TrashFragment trash = new TrashFragment();
-    private NotePrivateFragment tagsPrivate = new NotePrivateFragment();
+
+    // Fragmentos
+    private final NoteFragment notes = new NoteFragment();
+    private final TagFragment tags = new TagFragment();
+    private final TrashFragment trash = new TrashFragment();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        mAuth = FirebaseAuth.getInstance();
+        inicializarAutenticacion();
+        verificarUsuarioAutenticado();
+        inicializarComponentes();
+        configurarUI();
+        cargarFragmentoInicial();
+    }
 
+    private void inicializarAutenticacion() {
+        mAuth = FirebaseAuth.getInstance();
+    }
+
+    private void verificarUsuarioAutenticado() {
         if (mAuth.getCurrentUser() == null) {
-            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
-            return;
+            redirigirALogin();
         }
-        firestoreRepository = new FirestoreRepository(this);
-        setupToolbarAndNavigation();
+    }
+
+    private void redirigirALogin() {
+        Intent intent = new Intent(MainActivity.this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
+
+    private void inicializarComponentes() {
         GenerarData generarData = GenerarData.getInstancia();
         generarData.clearUserData();
         generarData.initializeWithContext(this);
+    }
+
+    private void configurarUI() {
+        configurarToolbarYNavegacion();
+        configurarPerfilUsuario();
+        configurarWindowInsets();
+    }
+
+    private void cargarFragmentoInicial() {
         loadFragment(notes);
+    }
+
+    private void configurarToolbarYNavegacion() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
+
+        drawerLayout = findViewById(R.id.drawer_layout);
+        navigationView = findViewById(R.id.nav_view);
+
+        ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
+                this, drawerLayout, toolbar,
+                R.string.navigation_drawer_open,
+                R.string.navigation_drawer_close
+        );
+
+        drawerLayout.addDrawerListener(toggle);
+        toggle.syncState();
+
+        navigationView.setNavigationItemSelectedListener(item -> {
+            manejarSeleccionNavegacion(item.getItemId());
+            return true;
+        });
+    }
+
+    private void manejarSeleccionNavegacion(int itemId) {
+        drawerLayout.closeDrawer(GravityCompat.START);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> navegarSegunSeleccion(itemId), 300);
+    }
+
+    private void navegarSegunSeleccion(int itemId) {
+        if (itemId == R.id.notes) {
+            loadFragment(notes);
+        } else if (itemId == R.id.tags) {
+            loadFragment(tags);
+        } else if (itemId == R.id.trash) {
+            loadFragment(trash);
+        } else if (itemId == R.id.btnLogout) {
+            cerrarSesion();
+        }
+    }
+
+    private void configurarPerfilUsuario() {
         setupUserProfile();
+    }
+
+    private void configurarWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main_content), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
     }
-    private void setupToolbarAndNavigation() {
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
-        Objects.requireNonNull(getSupportActionBar()).setDisplayShowTitleEnabled(false);
-        drawerLayout = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
-        toggle = new ActionBarDrawerToggle(
-                this, drawerLayout, toolbar,
-                R.string.navigation_drawer_open,
-                R.string.navigation_drawer_close
-        );
-        drawerLayout.addDrawerListener(toggle);
-        toggle.syncState();
-        navigationView.setNavigationItemSelectedListener(item -> {
-            int id = item.getItemId();
-            drawerLayout.closeDrawer(GravityCompat.START);
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (id == R.id.notes) {
-                    loadFragment(notes);
-                } else if (id == R.id.tags) {
-                    loadFragment(tags);
-                } else if (id == R.id.trash) {
-                    loadFragment(trash);
-                } else if (id == R.id.btnLogout) {
-                    logoutUser();
-                }
-            }, 300);
-            return true;
-        });
-    }
-    private void setupAutoSave() {
-    }
-    private void saveUserDataToFirestore(Runnable onComplete) {
-        if (onComplete != null) {
-            onComplete.run();
-        }
-    }
-    private void saveUserDataToFirestore() {
-    }
-    private void logoutUser() {
+
+    private void cerrarSesion() {
         GenerarData generarData = GenerarData.getInstancia();
+
         if (generarData.getFirestoreRepository() != null) {
             Log.d("MainActivity", "Guardando datos antes del logout...");
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                generarData.clearUserData();
-                mAuth.signOut();
-                Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finish();
-            }, 1000); //FirestoreCarga
+            new Handler(Looper.getMainLooper()).postDelayed(() -> finalizarCierreSesion(generarData), 1000);
         } else {
-            mAuth.signOut();
-            Intent intent = new Intent(MainActivity.this, LoginActivity.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(intent);
-            finish();
+            finalizarCierreSesion(generarData);
         }
     }
+
+    private void finalizarCierreSesion(GenerarData generarData) {
+        generarData.clearUserData();
+        mAuth.signOut();
+        redirigirALogin();
+    }
+
     public void loadFragment(Fragment fragment) {
         getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.contenedor, fragment)
                 .commit();
     }
+
     @Override
     protected void onPause() {
         super.onPause();
         Log.d("MainActivity", "App pausada - forzando guardado de datos");
-        GenerarData generarData = GenerarData.getInstancia();
-        if (generarData.getFirestoreRepository() != null) {
-            generarData.getFirestoreRepository().getAllNotes(new FirestoreRepository.DataCallback<List<Note>>() {
-                @Override
-                public void onSuccess(List<Note> notes) {
-                }
-                @Override
-                public void onError(String error) {
-                }
-            });
-        }
     }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -163,10 +186,8 @@ public class MainActivity extends AppCompatActivity {
         if (generarData.getFirestoreRepository() != null) {
             generarData.getFirestoreRepository().cleanup();
         }
-        if (saveHandler != null && saveRunnable != null) {
-            saveHandler.removeCallbacks(saveRunnable);
-        }
     }
+
     private void setupUserProfile() {
         View headerView = navigationView.getHeaderView(0);
         ImageView imgProfileIcon = headerView.findViewById(R.id.imgProfileIcon);
@@ -181,9 +202,9 @@ public class MainActivity extends AppCompatActivity {
             }, 2000);
         });
 
-        imgEditIcon.setOnClickListener(v -> showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
+        imgEditIcon.setOnClickListener(v -> showProfileIconDialog(imgProfileIcon));
         headerView.findViewById(R.id.cardProfileIcon).setOnClickListener(v ->
-                showProfileIconDialog(imgProfileIcon, txtUserName, txtUserEmail));
+                showProfileIconDialog(imgProfileIcon));
     }
 
     private void updateUserProfileDisplay(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
@@ -198,7 +219,7 @@ public class MainActivity extends AppCompatActivity {
         updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
     }
 
-    private void showProfileIconDialog(ImageView imgProfileIcon, TextView txtUserName, TextView txtUserEmail) {
+    private void showProfileIconDialog(ImageView imgProfileIcon) {
         ProfileIconDialog.showIconSelectionDialog(this, selectedIcon -> {
             UserProfileManager profileManager = new UserProfileManager(this);
             UserProfile profile = profileManager.getUserProfile();
@@ -219,20 +240,19 @@ public class MainActivity extends AppCompatActivity {
             TextView txtUserName = headerView.findViewById(R.id.txtUserName);
             TextView txtUserEmail = headerView.findViewById(R.id.txtUserEmail);
             updateUserProfileDisplay(imgProfileIcon, txtUserName, txtUserEmail);
-
             GenerarData generarData = GenerarData.getInstancia();
-            Log.d("MainActivity", "Forzando reinicialización completa en onResume para usuario: " + currentUser.getUid());
-            generarData.forceCompleteReinitialization(this);
 
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (notes != null) {
-                    generarData.addDataChangeListener(notes);
-                }
-                if (tags != null) {
-                    generarData.addDataChangeListener(tags);
-                }
-                generarData.forceUpdateAllFragments();
-            }, 1000);
+            if (generarData.shouldRefreshData()) {
+                Log.d("MainActivity", "Actualizando datos para usuario: " + currentUser.getUid());
+                generarData.refreshDataIfNeeded(this);
+            }
+
+            if (notes != null && !generarData.hasDataChangeListener(notes)) {
+                generarData.addDataChangeListener(notes);
+            }
+            if (tags != null && !generarData.hasDataChangeListener(tags)) {
+                generarData.addDataChangeListener(tags);
+            }
 
         } else {
             Log.w("MainActivity", "No hay usuario autenticado en onResume - redirigiendo al login");

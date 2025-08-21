@@ -1,5 +1,7 @@
 package com.sgionotes.models;
 
+import com.google.firebase.firestore.Exclude;
+
 public class Tag {
     private String id;
     private String etiquetaDescripcion;
@@ -69,6 +71,7 @@ public class Tag {
         this.favoriteTimestamp = favoriteTimestamp;
     }
 
+    @Exclude // Evitar que Firestore intente mapear este getter como campo 'displayText'
     public String getDisplayText() {
         return etiquetaDescripcion;
     }

@@ -47,7 +47,7 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         if (tag == null) {
             return;
         }
-        holder.etTagText.setText(tag.getDisplayText());
+    holder.etTagText.setText(tag.getEtiquetaDescripcion());
 
         // VerificacionDeFavorito
         if (tag.isFavorite()) {
@@ -116,28 +116,16 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         menuAddFavorite.setOnClickListener(v -> {
             String tagName = currentTag.getEtiquetaDescripcion();
             boolean newFavoriteStatus = !currentTag.isFavorite();
-
-            // ActualizarLocalmente
-            currentTag.setFavorite(newFavoriteStatus);
-
             if (currentTag.getId() != null && !currentTag.getId().isEmpty()) {
                 GenerarData.getInstance().getFirestoreRepository()
                         .setTagFavorite(currentTag.getId(), newFavoriteStatus,
                                 new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                                     @Override
                                     public void onSuccess() {
-                                        if (newFavoriteStatus) {
-                                            Toast.makeText(context, "'" + tagName + "' añadida a favoritas", Toast.LENGTH_SHORT).show();
-                                        } else {
-                                            Toast.makeText(context, "'" + tagName + "' quitada de favoritas", Toast.LENGTH_SHORT).show();
-                                        }
-                                        sortTags();
-                                        notifyDataSetChanged();
+                                        Toast.makeText(context, (newFavoriteStatus ? "'" + tagName + "' añadida a favoritas" : "'" + tagName + "' quitada de favoritas"), Toast.LENGTH_SHORT).show();
                                     }
-
                                     @Override
                                     public void onError(String error) {
-                                        currentTag.setFavorite(!newFavoriteStatus);
                                         Toast.makeText(context, "Error al actualizar favorito: " + error, Toast.LENGTH_SHORT).show();
                                     }
                                 });
@@ -259,11 +247,12 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
         }
 
         if (!newText.isEmpty() && !newText.equals(tag.getEtiquetaDescripcion())) {
-            tag.setEtiquetaDescripcion(newText);
-
-            // GuardarFirestore
-            GenerarData.getInstance().getFirestoreRepository()
-                    .saveTag(tag, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
+        String original = tag.getEtiquetaDescripcion();
+        Tag updated = new Tag(tag.getId(), newText, tag.getUserId());
+        updated.setFavorite(tag.isFavorite());
+        updated.setFavoriteTimestamp(tag.getFavoriteTimestamp());
+        GenerarData.getInstance().getFirestoreRepository()
+            .saveTag(updated, new com.sgionotes.repository.FirestoreRepository.SimpleCallback() {
                         @Override
                         public void onSuccess() {
                             if (context instanceof android.app.Activity) {
@@ -280,7 +269,7 @@ public class TagAdapter extends RecyclerView.Adapter<TagAdapter.TagViewHolder> {
                             if (context instanceof android.app.Activity) {
                                 ((android.app.Activity) context).runOnUiThread(() -> {
                                     // RevertirCambio
-                                    holder.etTagText.setText(tag.getEtiquetaDescripcion());
+                                    holder.etTagText.setText(original);
                                     Toast.makeText(context, "Error al actualizar etiqueta: " + error, Toast.LENGTH_SHORT).show();
                                 });
                             }

@@ -1,5 +1,7 @@
 package com.sgionotes.activities;
+
 import android.Manifest;
+import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
@@ -32,14 +34,17 @@ import com.sgionotes.models.Note;
 import com.sgionotes.models.Tag;
 import com.sgionotes.repository.FirestoreRepository;
 import com.sgionotes.utils.LocationHelper;
-import com.sgionotes.utils.TagDebugLogger;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DetailNoteActivity extends AppCompatActivity {
 
+    private boolean estáGuardando = false;
+    private boolean notaYaCreada = false;
+    private long ultimoGuardado = 0;
+    private static final long INTERVALO_MINIMO_GUARDADO = 2000;
     private ArrayList<String> etiquetasNota;
-    private ArrayList<String> etiquetasNotaIds; //ID
+    private ArrayList<String> etiquetasNotaIds;
     private TextView txtIdNotaDetailNote;
     private EditText etTitulo;
     private EditText etContenido;
@@ -47,6 +52,7 @@ public class DetailNoteActivity extends AppCompatActivity {
     private ChipGroup chipGroupSelectedTags;
     private boolean desdePapelera = false;
     private boolean enviandoAPapelera = false;
+    private String noteId;
 
     // VariablesGPS
     private CardView cardLocationContainer;
@@ -55,226 +61,203 @@ public class DetailNoteActivity extends AppCompatActivity {
     private ImageButton btnRemoveLocation;
     private LinearLayout layoutLocationInfo;
     private String currentGpsLocation = null;
+
+    // Constantes
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 1001;
 
-    private final ActivityResultLauncher<Intent> tagsActivityLauncher = registerForActivityResult(
-            new ActivityResultContracts.StartActivityForResult(),
-            result -> {
-                String noteId = txtIdNotaDetailNote.getText().toString();
-                TagDebugLogger.logMethodCall("TagsActivityResult", noteId, "ResultCode: " + result.getResultCode());
-
-                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
-                    ArrayList<String> selectedTags = result.getData().getStringArrayListExtra("selectedTags");
-                    TagDebugLogger.logTagOperation("TAGS_RESULT_RECEIVED", noteId, "Selected tags: " + (selectedTags != null ? selectedTags.size() : "NULL"));
-
-                    if (selectedTags != null) {
-                        TagDebugLogger.logListState("BEFORE_TAGS_UPDATE", noteId, etiquetasNota, etiquetasNotaIds);
-                        etiquetasNota = selectedTags;
-                        convertTagNamesToIds(selectedTags);
-                        updateSelectedTagsDisplay();
-                        TagDebugLogger.logListState("AFTER_TAGS_UPDATE", noteId, etiquetasNota, etiquetasNotaIds);
-                    } else {
-                        TagDebugLogger.logError("TAGS_RESULT_NULL", noteId, "Selected tags is null");
-                    }
-                } else {
-                    TagDebugLogger.logError("TAGS_RESULT_FAILED", noteId, "Result not OK or data is null");
+    private final ActivityResultLauncher<Intent> tagsLauncher = registerForActivityResult(
+        new ActivityResultContracts.StartActivityForResult(),
+        result -> {
+            if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                ArrayList<String> returnedTagIds = result.getData().getStringArrayListExtra("selectedTags");
+                if (returnedTagIds != null) {
+                    etiquetasNotaIds.clear();
+                    etiquetasNotaIds.addAll(returnedTagIds);
+                    cargarEtiquetasPorIds(etiquetasNotaIds);
                 }
             }
-    );
+        });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_detail_note);
+        inicializarUI();
+        configurarToolbar();
+        inicializarListas();
+        procesarIntent();
+        configurarListeners();
+        configurarUbicacion();
+        configurarPermisos();
+    }
 
-        // Log crítico para rastrear el inicio de la actividad
-        TagDebugLogger.logCritical("ACTIVITY_CREATE_START - DetailNoteActivity initialized");
+    private void inicializarUI() {
+        txtIdNotaDetailNote = findViewById(R.id.txtIdNotaDetailNote);
+        etTitulo = findViewById(R.id.etTitulo);
+        etContenido = findViewById(R.id.etmDetalleNota);
+        detailNote = findViewById(R.id.detailNote);
+        chipGroupSelectedTags = findViewById(R.id.chipGroupSelectedTags);
+        cardLocationContainer = findViewById(R.id.cardLocationContainer);
+        txtLocationInfo = findViewById(R.id.txtLocationInfo);
+        txtLocationLabel = findViewById(R.id.txtLocationLabel);
+        btnRemoveLocation = findViewById(R.id.btnRemoveLocation);
+        layoutLocationInfo = findViewById(R.id.layoutLocationInfo);
+    }
 
+    private void configurarToolbar() {
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
             getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
-        txtIdNotaDetailNote = findViewById(R.id.txtIdNotaDetailNote);
-        etTitulo = findViewById(R.id.etTitulo);
-        etContenido = findViewById(R.id.etmDetalleNota);
-        detailNote = findViewById(R.id.detailNote);
-        chipGroupSelectedTags = findViewById(R.id.chipGroupSelectedTags);
-
-        // CRÍTICO: Log antes de inicializar las listas
+    }
+    private void inicializarListas() {
         etiquetasNota = new ArrayList<>();
         etiquetasNotaIds = new ArrayList<>();
-        TagDebugLogger.logCritical("ACTIVITY_CREATE_LISTS_INITIALIZED - Lists created empty");
-
+    }
+    private void procesarIntent() {
         boolean esNueva = getIntent().getBooleanExtra("esNueva", false);
-        TagDebugLogger.logCritical("ACTIVITY_CREATE_ES_NUEVA: " + esNueva);
-
         Intent intent = getIntent();
+
         if (intent != null) {
-            String id = intent.getStringExtra("id");
-            String titulo = intent.getStringExtra("titulo");
-            String contenido = intent.getStringExtra("contenido");
-            desdePapelera = intent.getBooleanExtra("desdePapelera", false);
-            ArrayList<String> intentTagIds = intent.getStringArrayListExtra("etiquetas");
-
-            // CRÍTICO: Log de los datos recibidos del Intent - ARREGLADO PARA EVITAR CRASH
-            String tagIdsInfo = "NULL";
-            if (intentTagIds != null) {
-                try {
-                    // Filtrar elementos null para evitar crash en String.join
-                    List<String> safeTagIds = new ArrayList<>();
-                    for (String tagId : intentTagIds) {
-                        if (tagId != null && !tagId.trim().isEmpty()) {
-                            safeTagIds.add(tagId);
-                        }
-                    }
-
-                    if (!safeTagIds.isEmpty()) {
-                        etiquetasNotaIds = new ArrayList<>(safeTagIds);
-                        try {
-                            TagDebugLogger.logCritical("ACTIVITY_CREATE_TAGS_SET - Loading " + safeTagIds.size() + " tagIds: " + String.join(",", safeTagIds));
-                        } catch (Exception e) {
-                            TagDebugLogger.logCritical("ACTIVITY_CREATE_TAGS_SET - Loading " + safeTagIds.size() + " tagIds: [LOG_ERROR]");
-                        }
-                        loadTagNamesFromIds(etiquetasNotaIds);
-                    } else {
-                        TagDebugLogger.logCritical("ACTIVITY_CREATE_NO_TAGS - All tagIds were null or empty");
-                        updateSelectedTagsDisplay();
-                    }
-                } catch (Exception e) {
-                    tagIdsInfo = "Count:" + intentTagIds.size() + " - ERROR:" + e.getMessage();
-                }
-            }
-
-            TagDebugLogger.logCritical(String.format("ACTIVITY_CREATE_INTENT_DATA - ID:%s | Title:%s | Content:%s | TagIds:%s",
-                id != null ? id : "NULL",
-                titulo != null ? titulo : "NULL",
-                contenido != null ? contenido : "NULL",
-                tagIdsInfo));
-
-            txtIdNotaDetailNote.setText(id);
-            etTitulo.setText(titulo);
-            etContenido.setText(contenido);
-
-            if (intentTagIds != null && !intentTagIds.isEmpty()) {
-                // Filtrar elementos null para evitar crashes
-                List<String> safeTagIds = new ArrayList<>();
-                for (String tagId : intentTagIds) {
-                    if (tagId != null && !tagId.trim().isEmpty()) {
-                        safeTagIds.add(tagId);
-                    }
-                }
-
-                if (!safeTagIds.isEmpty()) {
-                    etiquetasNotaIds = new ArrayList<>(safeTagIds);
-                    try {
-                        TagDebugLogger.logCritical("ACTIVITY_CREATE_TAGS_SET - Loading " + safeTagIds.size() + " tagIds: " + String.join(",", safeTagIds));
-                    } catch (Exception e) {
-                        TagDebugLogger.logCritical("ACTIVITY_CREATE_TAGS_SET - Loading " + safeTagIds.size() + " tagIds: [LOG_ERROR]");
-                    }
-                    loadTagNamesFromIds(etiquetasNotaIds);
-                } else {
-                    TagDebugLogger.logCritical("ACTIVITY_CREATE_NO_TAGS - All tagIds were null or empty");
-                    updateSelectedTagsDisplay();
-                }
-            } else {
-                TagDebugLogger.logCritical("ACTIVITY_CREATE_NO_TAGS - No tagIds received from intent");
-                updateSelectedTagsDisplay();
-            }
-
-            if (desdePapelera) {
-                etTitulo.setFocusable(false);
-                etTitulo.setClickable(true);
-                etContenido.setFocusable(false);
-                etContenido.setClickable(true);
-                View.OnClickListener mostrarMensaje = v -> mostrarDialogoEliminarNotaIndividual(id);
-                etTitulo.setOnClickListener(mostrarMensaje);
-                etContenido.setOnClickListener(mostrarMensaje);
-            }
+            procesarDatosIntent(intent, esNueva);
+            actualizarChipsEtiquetas();
         } else {
-            TagDebugLogger.logCritical("ACTIVITY_CREATE_NO_INTENT - Intent is null");
-            updateSelectedTagsDisplay();
+            actualizarChipsEtiquetas();
         }
+
         configurarVisibilidadBotones(esNueva, desdePapelera);
+        configurarWindowInsets();
+    }
+    private void procesarDatosIntent(Intent intent, boolean esNueva) {
+        String id = intent.getStringExtra("id");
+        String titulo = intent.getStringExtra("titulo");
+        String contenido = intent.getStringExtra("contenido");
+        desdePapelera = intent.getBooleanExtra("desdePapelera", false);
+        ArrayList<String> intentTagIds = intent.getStringArrayListExtra("etiquetas");
+
+        noteId = id;
+        if (id != null && !id.trim().isEmpty()) {
+            txtIdNotaDetailNote.setText(id);
+            notaYaCreada = true; 
+        }
+        if (titulo != null) etTitulo.setText(titulo);
+        if (contenido != null) etContenido.setText(contenido);
+
+        if (intentTagIds != null) {
+            procesarEtiquetasIntent(intentTagIds, esNueva);
+        }
+    }
+    private void procesarEtiquetasIntent(ArrayList<String> intentTagIds, boolean esNueva) {
+        try {
+            List<String> safeTagIds = filtrarTagIdsValidos(intentTagIds);
+
+            if (!safeTagIds.isEmpty()) {
+                etiquetasNotaIds.clear();
+                etiquetasNotaIds.addAll(safeTagIds);
+                cargarEtiquetasPorIds(etiquetasNotaIds);
+            }
+        } catch (Exception e) {
+        }
+    }
+
+    private List<String> filtrarTagIdsValidos(ArrayList<String> tagIds) {
+        List<String> safeTagIds = new ArrayList<>();
+        for (String tagId : tagIds) {
+            if (tagId != null && !tagId.trim().isEmpty()) {
+                safeTagIds.add(tagId);
+            }
+        }
+        return safeTagIds;
+    }
+
+    private void configurarWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.detailNote), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
-        findViewById(R.id.fabEtiquetas).setOnClickListener(v -> {
-            if (!desdePapelera) {
-                Intent intentTags = new Intent(DetailNoteActivity.this, TagsActivity.class);
-                if (etiquetasNota != null) {
-                    intentTags.putStringArrayListExtra("tags", etiquetasNota);
-                }
-                tagsActivityLauncher.launch(intentTags);
-            } else {
-                Snackbar.make(detailNote, "No es posible editar etiquetas desde la papelera", Snackbar.LENGTH_LONG).show();
-            }
-        });
-        findViewById(R.id.fabEliminar).setOnClickListener(v -> {
-            if (desdePapelera) {
-                mostrarDialogoEliminarNotaIndividual(txtIdNotaDetailNote.getText().toString());
-            } else {
-                mostrarDialogoEnviarPapelera();
-            }
-        });
-        findViewById(R.id.fabUbicacion).setOnClickListener(v -> {
-            if (!desdePapelera) {
-                if (currentGpsLocation != null && !currentGpsLocation.trim().isEmpty()) {
-                    Toast.makeText(this, "Esta nota ya tiene una ubicación guardada", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                // Popup
-                mostrarPopupConfirmacionUbicacion();
-            } else {
-                Snackbar.make(detailNote, "No es posible agregar ubicación desde la papelera", Snackbar.LENGTH_LONG).show();
-            }
-        });
-        cardLocationContainer = findViewById(R.id.cardLocationContainer);
-        txtLocationInfo = findViewById(R.id.txtLocationInfo);
-        txtLocationLabel = findViewById(R.id.txtLocationLabel);
-        btnRemoveLocation = findViewById(R.id.btnRemoveLocation);
-        layoutLocationInfo = findViewById(R.id.layoutLocationInfo);
+    }
 
-        // VALIDACIÓN CRÍTICA: Verificar que todos los elementos GPS existan
-        if (cardLocationContainer == null || txtLocationInfo == null ||
-            txtLocationLabel == null || btnRemoveLocation == null || layoutLocationInfo == null) {
-            TagDebugLogger.logCritical("GPS_VIEWS_NULL - Some GPS views are null, disabling GPS functionality");
-            // Deshabilitar funcionalidad GPS si los views no existen
-            currentGpsLocation = null;
+    private void configurarListeners() {
+        findViewById(R.id.fabEtiquetas).setOnClickListener(v -> manejarClickEtiquetas());
+        findViewById(R.id.fabEliminar).setOnClickListener(v -> manejarClickEliminar());
+        findViewById(R.id.fabUbicacion).setOnClickListener(v -> manejarClickUbicacion());
+    }
+
+    private void manejarClickEtiquetas() {
+        if (!desdePapelera) {
+            Intent intentTags = new Intent(DetailNoteActivity.this, TagsActivity.class);
+            if (etiquetasNotaIds != null) {
+                intentTags.putStringArrayListExtra("tags", etiquetasNotaIds);
+            }
+            tagsLauncher.launch(intentTags);
         } else {
-            // Solo configurar listeners si los views existen
-            layoutLocationInfo.setOnClickListener(v -> {
-                if (currentGpsLocation != null && !currentGpsLocation.trim().isEmpty()) {
-                    mostrarDetallesUbicacion();
-                }
-            });
-            btnRemoveLocation.setOnClickListener(v -> {
-                currentGpsLocation = null;
-                cardLocationContainer.setVisibility(View.GONE);
-                guardarNotaInmediatamente();
-                Toast.makeText(this, "Ubicación eliminada", Toast.LENGTH_SHORT).show();
-            });
-            cargarUbicacionExistente();
-        }
-
-        // Removido: obtenerUbicacionActual() automático
-        // Ahora solo se obtiene ubicación cuando el usuario presiona el botón flotante
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // Solo solicitamos permisos, pero no obtenemos ubicación automáticamente
-            // Los permisos se solicitarán cuando el usuario presione el botón de ubicación
+            mostrarMensajePapelera("No es posible editar etiquetas desde la papelera");
         }
     }
 
-    private void updateSelectedTagsDisplay() {
-        String noteId = txtIdNotaDetailNote.getText().toString();
+    private void manejarClickEliminar() {
+        if (desdePapelera) {
+            mostrarDialogoEliminarNotaIndividual(txtIdNotaDetailNote.getText().toString());
+        } else {
+            mostrarDialogoEnviarPapelera();
+        }
+    }
 
-        // Log del estado antes de la actualización
-        TagDebugLogger.logListState("BEFORE_UPDATE_DISPLAY", noteId, etiquetasNota, etiquetasNotaIds);
-        TagDebugLogger.logTagList("UPDATE_DISPLAY_START", noteId, etiquetasNota);
+    private void manejarClickUbicacion() {
+        if (!desdePapelera) {
+            if (currentGpsLocation != null && !currentGpsLocation.trim().isEmpty()) {
+                Toast.makeText(this, "Esta nota ya tiene una ubicación guardada", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            mostrarPopupConfirmacionUbicacion();
+        } else {
+            mostrarMensajePapelera("No es posible agregar ubicación desde la papelera");
+        }
+    }
 
+    private void mostrarMensajePapelera(String mensaje) {
+        Snackbar.make(detailNote, mensaje, Snackbar.LENGTH_LONG).show();
+    }
+
+    private void configurarUbicacion() {
+        if (!validarElementosGPS()) {
+            currentGpsLocation = null;
+            return;
+        }
+
+        layoutLocationInfo.setOnClickListener(v -> {
+            if (currentGpsLocation != null && !currentGpsLocation.trim().isEmpty()) {
+                mostrarDetallesUbicacion();
+            }
+        });
+
+        btnRemoveLocation.setOnClickListener(v -> eliminarUbicacion());
+        cargarUbicacionExistente();
+    }
+
+    private boolean validarElementosGPS() {
+        return cardLocationContainer != null && txtLocationInfo != null &&
+               txtLocationLabel != null && btnRemoveLocation != null && layoutLocationInfo != null;
+    }
+
+    private void eliminarUbicacion() {
+        currentGpsLocation = null;
+        cardLocationContainer.setVisibility(View.GONE);
+        guardarNotaUnificado();
+        Toast.makeText(this, "Ubicación eliminada", Toast.LENGTH_SHORT).show();
+    }
+
+    private void configurarPermisos() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
+            != PackageManager.PERMISSION_GRANTED) {
+        }
+    }
+
+    private void actualizarChipsEtiquetas() {
         chipGroupSelectedTags.removeAllViews();
 
         if (etiquetasNota != null && !etiquetasNota.isEmpty()) {
@@ -286,16 +269,9 @@ public class DetailNoteActivity extends AppCompatActivity {
             }
         } else {
             chipGroupSelectedTags.setVisibility(View.GONE);
-            // Log crítico cuando las etiquetas están vacías
             if (etiquetasNotaIds != null && !etiquetasNotaIds.isEmpty()) {
-                TagDebugLogger.logDataInconsistency(noteId,
-                    "TagIDs exist but TagNames empty",
-                    "IDs:" + etiquetasNotaIds.size() + " Names:" + (etiquetasNota != null ? etiquetasNota.size() : 0));
             }
         }
-
-        TagDebugLogger.logTagList("UPDATE_DISPLAY_END", noteId, etiquetasNota);
-        TagDebugLogger.logListState("AFTER_UPDATE_DISPLAY", noteId, etiquetasNota, etiquetasNotaIds);
     }
 
     private Chip createFilterChip(String tagName) {
@@ -324,41 +300,28 @@ public class DetailNoteActivity extends AppCompatActivity {
 
         chip.setOnCloseIconClickListener(v -> {
             String noteId = txtIdNotaDetailNote.getText().toString();
-            TagDebugLogger.logTagOperation("REMOVE_TAG_START", noteId, "Removing tag: " + tagName);
-            TagDebugLogger.logTagList("REMOVE_TAG_BEFORE", noteId, etiquetasNota);
 
             try {
                 // Validacion
                 if (etiquetasNota == null || etiquetasNotaIds == null) {
-                    TagDebugLogger.logError("REMOVE_TAG_NULL_LISTS", noteId, "Lists are null");
                     Toast.makeText(DetailNoteActivity.this, "Error: Listas de etiquetas no inicializadas", Toast.LENGTH_SHORT).show();
                     return;
                 }
 
                 int index = etiquetasNota.indexOf(tagName);
-                TagDebugLogger.logTagOperation("REMOVE_TAG_INDEX", noteId, "Tag index: " + index);
 
                 if (index != -1 && index < etiquetasNota.size() && index < etiquetasNotaIds.size()) {
-                    String removedTagId = etiquetasNotaIds.get(index);
-                    TagDebugLogger.logTagOperation("REMOVE_TAG_VALID", noteId, "Removing tagId: " + removedTagId);
-
                     etiquetasNota.remove(index);
                     etiquetasNotaIds.remove(index);
 
-                    TagDebugLogger.logTagList("REMOVE_TAG_AFTER", noteId, etiquetasNota);
-
-                    updateSelectedTagsDisplay();
+                    actualizarChipsEtiquetas();
                     guardarNotaInmediatamente();
-                    // ForzarActualizacion
-                    GenerarData.getInstancia().forceSyncData();
                     Toast.makeText(DetailNoteActivity.this, "Etiqueta eliminada", Toast.LENGTH_SHORT).show();
                 } else {
-                    TagDebugLogger.logError("REMOVE_TAG_INVALID_INDEX", noteId, "Invalid index or size mismatch");
                     Toast.makeText(DetailNoteActivity.this, "Recargando etiquetas...", Toast.LENGTH_SHORT).show();
                     recargarEtiquetasDesdeFirebase();
                 }
             } catch (Exception e) {
-                TagDebugLogger.logError("REMOVE_TAG_EXCEPTION", noteId, e.getMessage());
                 Toast.makeText(DetailNoteActivity.this, "Error al eliminar etiqueta", Toast.LENGTH_SHORT).show();
                 recargarEtiquetasDesdeFirebase();
             }
@@ -366,49 +329,8 @@ public class DetailNoteActivity extends AppCompatActivity {
         return chip;
     }
     private void guardarNotaInmediatamente() {
-        GenerarData generarData = GenerarData.getInstancia();
-        String id = txtIdNotaDetailNote.getText().toString();
-        String titulo = etTitulo.getText().toString().trim();
-        String contenido = etContenido.getText().toString().trim();
-
-        TagDebugLogger.logFirebaseOperation("SAVE_START", id, "Saving with tagIds: " + etiquetasNotaIds.size());
-        TagDebugLogger.logTagList("SAVE_BEFORE_FB", id, etiquetasNota);
-
-        if (titulo.isEmpty() && contenido.isEmpty()) {
-            return;
-        }
-        Note nota = new Note();
-        nota.setId(id.isEmpty() ? null : id);
-        nota.setTitulo(titulo);
-        nota.setContenido(contenido);
-        nota.setTagIds(new ArrayList<>(etiquetasNotaIds));
-        nota.setTimestamp(System.currentTimeMillis());
-
-        // GPS
-        if (currentGpsLocation != null) {
-            nota.setGpsLocation(currentGpsLocation);
-        }
-
-        generarData.getFirestoreRepository().saveNote(nota, new FirestoreRepository.SimpleCallback() {
-            @Override
-            public void onSuccess() {
-                runOnUiThread(() -> {
-                    TagDebugLogger.logFirebaseOperation("SAVE_SUCCESS", id, "Note saved successfully");
-                    if (nota.getId() != null && !nota.getId().isEmpty()) {
-                        txtIdNotaDetailNote.setText(nota.getId());
-                    }
-                    generarData.updateNoteInLocalList(nota);
-                });
-            }
-
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    TagDebugLogger.logError("SAVE_FIREBASE", id, error);
-                    Toast.makeText(DetailNoteActivity.this, "Error guardando nota", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
+        // Usar el mismo mecanismo unificado para prevenir duplicaciones
+        guardarNotaUnificado();
     }
 
     private void recargarEtiquetasDesdeFirebase() {
@@ -423,11 +345,11 @@ public class DetailNoteActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     if (note.getTagIds() != null) {
                         etiquetasNotaIds = new ArrayList<>(note.getTagIds());
-                        loadTagNamesFromIds(etiquetasNotaIds);
+                        cargarEtiquetasPorIds(etiquetasNotaIds);
                     } else {
                         etiquetasNotaIds.clear();
                         etiquetasNota.clear();
-                        updateSelectedTagsDisplay();
+                        actualizarChipsEtiquetas();
                     }
                 });
             }
@@ -583,199 +505,74 @@ public class DetailNoteActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         if (!desdePapelera && !enviandoAPapelera) {
-            // CRÍTICO: Evitar guardado automático si las listas están inconsistentes
-            String id = txtIdNotaDetailNote.getText().toString();
-            String titulo = etTitulo.getText().toString();
-            String contenido = etContenido.getText().toString();
-
-            // Solo guardar si hay contenido Y las etiquetas están en estado consistente
-            boolean hasContent = !titulo.trim().isEmpty() || !contenido.trim().isEmpty();
-            boolean tagsConsistent = (etiquetasNota != null && etiquetasNotaIds != null &&
-                                     etiquetasNota.size() == etiquetasNotaIds.size());
-
-            TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_CHECK", id,
-                String.format("HasContent:%b TagsConsistent:%b Names:%d IDs:%d",
-                hasContent, tagsConsistent,
-                etiquetasNota != null ? etiquetasNota.size() : -1,
-                etiquetasNotaIds != null ? etiquetasNotaIds.size() : -1));
-
-            // Solo proceder con el guardado si el estado es consistente
-            if (hasContent && tagsConsistent) {
-                guardarNota();
-            } else {
-                TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_SKIPPED", id,
-                    "Skipping save to prevent data corruption");
-            }
+            guardarNotaUnificado();
         }
     }
-    private void guardarNota() {
+    private void guardarNotaUnificado() {
+    long ahora = System.currentTimeMillis();
+    if (estáGuardando) return; // ya hay un guardado en curso
+    if ((ahora - ultimoGuardado) < INTERVALO_MINIMO_GUARDADO) return; // debounce
+
         String id = txtIdNotaDetailNote.getText().toString();
-        String titulo = etTitulo.getText().toString();
-        String contenido = etContenido.getText().toString();
-
-        // Log para identificar cuál método está causando el problema
-        TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_START", id, "guardarNota() called");
-        TagDebugLogger.logListState("SAVE_ON_PAUSE_BEFORE", id, etiquetasNota, etiquetasNotaIds);
-
-        if (titulo.trim().isEmpty() && contenido.trim().isEmpty()) {
-            return;
-        }
-        GenerarData generarData = GenerarData.getInstancia();
-
-        if (id == null || id.isEmpty()) {
-            Note nuevaNota = new Note(titulo, contenido);
-            if (etiquetasNotaIds != null) {
-                nuevaNota.setTagIds(etiquetasNotaIds);
-            }
-            TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_NEW", id, "Creating new note with " + etiquetasNotaIds.size() + " tags");
-            generarData.getFirestoreRepository().saveNote(nuevaNota, new FirestoreRepository.SimpleCallback() {
-                @Override
-                public void onSuccess() {
-                    runOnUiThread(() -> {
-                        if (nuevaNota.getId() != null) {
-                            txtIdNotaDetailNote.setText(nuevaNota.getId());
-                        }
-                    });
-                }
-                @Override
-                public void onError(String error) {
-                    Toast.makeText(DetailNoteActivity.this, "Error al guardar nota: " + error, Toast.LENGTH_SHORT).show();
-                }
-            });
-        } else {
-            // PROBLEMA IDENTIFICADO: Este método está obteniendo la nota desde Firebase
-            // pero esa nota puede tener TagIds obsoletos
-            TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_UPDATE", id, "Updating existing note - POTENTIAL CONFLICT");
-
-            // SOLUCIÓN: Usar directamente los TagIds actuales en lugar de obtener desde Firebase
-            Note notaActualizada = new Note();
-            notaActualizada.setId(id);
-            notaActualizada.setTitulo(titulo);
-            notaActualizada.setContenido(contenido);
-            notaActualizada.setTagIds(etiquetasNotaIds != null ? new ArrayList<>(etiquetasNotaIds) : new ArrayList<>());
-            notaActualizada.setTimestamp(System.currentTimeMillis());
-
-            // Preservar ubicación GPS si existe
-            if (currentGpsLocation != null) {
-                notaActualizada.setGpsLocation(currentGpsLocation);
-            }
-
-            TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_FIXED", id, "Using current TagIds: " + etiquetasNotaIds.size());
-
-            generarData.getFirestoreRepository().saveNote(notaActualizada, new FirestoreRepository.SimpleCallback() {
-                @Override
-                public void onSuccess() {
-                    TagDebugLogger.logFirebaseOperation("SAVE_ON_PAUSE_SUCCESS", id, "Note saved successfully");
-                }
-                @Override
-                public void onError(String error) {
-                    TagDebugLogger.logError("SAVE_ON_PAUSE_ERROR", id, error);
-                    Toast.makeText(DetailNoteActivity.this, "Error al actualizar nota: " + error, Toast.LENGTH_SHORT).show();
-                }
-            });
-        }
-    }
-    private void loadTagNamesFromIds(ArrayList<String> tagIds) {
-        String noteId = txtIdNotaDetailNote.getText().toString();
-        TagDebugLogger.logTagOperation("LOAD_TAGS_START", noteId, "TagIds received: " + (tagIds != null ? tagIds.size() : "NULL"));
-
-        if (tagIds == null || tagIds.isEmpty()) {
-            TagDebugLogger.logTagOperation("LOAD_TAGS_EMPTY", noteId, "No tags to load, clearing lists");
-            etiquetasNota = new ArrayList<>();
-            etiquetasNotaIds = new ArrayList<>();
-            updateSelectedTagsDisplay();
-            return;
-        }
-        GenerarData generarData = GenerarData.getInstancia();
-        generarData.getFirestoreRepository().getTagsByIds(tagIds, new FirestoreRepository.DataCallback<List<Tag>>() {
-            @Override
-            public void onSuccess(List<Tag> tags) {
-                runOnUiThread(() -> {
-                    TagDebugLogger.logTagOperation("LOAD_TAGS_SUCCESS", noteId, "Tags loaded from DB: " + tags.size());
-                    etiquetasNota = new ArrayList<>();
-                    etiquetasNotaIds = new ArrayList<>(tagIds); //MantenerID
-                    for (Tag tag : tags) {
-                        etiquetasNota.add(tag.getEtiquetaDescripcion());
-                    }
-                    TagDebugLogger.logTagList("LOAD_TAGS_FINAL", noteId, etiquetasNota);
-                    updateSelectedTagsDisplay();
-                });
-            }
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    TagDebugLogger.logError("LOAD_TAGS_ERROR", noteId, error);
-                    etiquetasNota = new ArrayList<>();
-                    etiquetasNotaIds = new ArrayList<>();
-                    updateSelectedTagsDisplay();
-                });
-            }
-        });
-    }
-    private void convertTagNamesToIds(ArrayList<String> tagNames) {
-        if (tagNames == null || tagNames.isEmpty()) {
-            etiquetasNotaIds = new ArrayList<>();
-            return;
-        }
-        GenerarData generarData = GenerarData.getInstancia();
-        generarData.getFirestoreRepository().getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
-            @Override
-            public void onSuccess(List<Tag> allTags) {
-                runOnUiThread(() -> {
-                    etiquetasNotaIds = new ArrayList<>();
-                    for (String tagName : tagNames) {
-                        for (Tag tag : allTags) {
-                            if (tag.getEtiquetaDescripcion().equals(tagName)) {
-                                etiquetasNotaIds.add(tag.getId());
-                                break;
-                            }
-                        }
-                    }
-                    updateSelectedTagsDisplay();
-                    String noteId = txtIdNotaDetailNote.getText().toString();
-                    if (noteId == null || noteId.isEmpty()) {
-                        guardarNotaConEtiquetasInmediatamente();
-                    } else {
-                        guardarNotaInmediatamente();
-                    }
-                });
-            }
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    Toast.makeText(DetailNoteActivity.this, "Error cargando etiquetas", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
-    }
-    private void guardarNotaConEtiquetasInmediatamente() {
         String titulo = etTitulo.getText().toString().trim();
         String contenido = etContenido.getText().toString().trim();
-        if (titulo.isEmpty() && contenido.isEmpty() && (etiquetasNotaIds == null || etiquetasNotaIds.isEmpty())) {
-            return; // NoGuardarVacia
+
+        if (titulo.isEmpty() && contenido.isEmpty()) {
+            return;
         }
+
+        estáGuardando = true;
         GenerarData generarData = GenerarData.getInstancia();
-        Note nuevaNota = new Note(titulo, contenido);
-        if (etiquetasNotaIds != null && !etiquetasNotaIds.isEmpty()) {
-            nuevaNota.setTagIds(new ArrayList<>(etiquetasNotaIds));
+        Note nota;
+
+        if (id == null || id.isEmpty()) {
+            // Solo crear una nueva nota si realmente no existe aún
+            if (notaYaCreada && noteId != null && !noteId.isEmpty()) {
+                // Tenemos un ID en memoria pero no en el TextView (caso raro), úsalo para actualizar
+                id = noteId;
+                nota = new Note();
+                nota.setId(id);
+                nota.setTitulo(titulo);
+                nota.setContenido(contenido);
+            } else {
+                nota = new Note(titulo, contenido); // creación inicial
+            }
+        } else {
+            nota = new Note();
+            nota.setId(id);
+            nota.setTitulo(titulo);
+            nota.setContenido(contenido);
         }
-        nuevaNota.setTimestamp(System.currentTimeMillis());
-        generarData.addNotaWithImmediateSync(nuevaNota, new FirestoreRepository.SimpleCallback() {
+
+        if (etiquetasNotaIds != null) {
+            nota.setTagIds(new ArrayList<>(etiquetasNotaIds));
+        } else {
+            nota.setTagIds(new ArrayList<>());
+        }
+
+        if (currentGpsLocation != null) {
+            nota.setGpsLocation(currentGpsLocation);
+        }
+        nota.setTimestamp(System.currentTimeMillis());
+        generarData.getFirestoreRepository().saveNote(nota, new FirestoreRepository.SimpleCallback() {
             @Override
             public void onSuccess() {
                 runOnUiThread(() -> {
-                    if (nuevaNota.getId() != null && !nuevaNota.getId().isEmpty()) {
-                        txtIdNotaDetailNote.setText(nuevaNota.getId());
+                    if (nota.getId() != null && !nota.getId().isEmpty()) {
+                        txtIdNotaDetailNote.setText(nota.getId());
+                        noteId = nota.getId();
+                        notaYaCreada = true;
                     }
-                    generarData.forceNotifyDataChanged();
-                    Toast.makeText(DetailNoteActivity.this, "Nota guardada con etiquetas", Toast.LENGTH_SHORT).show();
+                    generarData.updateNoteInLocalList(nota);
+                    estáGuardando = false;
+                    ultimoGuardado = System.currentTimeMillis();
                 });
             }
+
             @Override
             public void onError(String error) {
-                runOnUiThread(() -> {
-                    Toast.makeText(DetailNoteActivity.this, "Error guardando nota: " + error, Toast.LENGTH_SHORT).show();
-                });
+                estáGuardando = false;
+                runOnUiThread(() -> Toast.makeText(DetailNoteActivity.this, "Error guardando nota: " + error, Toast.LENGTH_SHORT).show());
             }
         });
     }
@@ -791,7 +588,6 @@ public class DetailNoteActivity extends AppCompatActivity {
         LocationConfirmationDialog dialog = new LocationConfirmationDialog(this, new LocationConfirmationDialog.LocationConfirmationListener() {
             @Override
             public void onConfirmLocation() {
-                // Confirmacion
                 if (LocationHelper.hasLocationPermissions(DetailNoteActivity.this)) {
                     if (LocationHelper.isLocationEnabled(DetailNoteActivity.this)) {
                         obtenerUbicacionActual();
@@ -799,7 +595,6 @@ public class DetailNoteActivity extends AppCompatActivity {
                         Toast.makeText(DetailNoteActivity.this, "Por favor habilita el GPS en configuración", Toast.LENGTH_LONG).show();
                     }
                 } else {
-                    // SolicitarPermisos
                     ActivityCompat.requestPermissions(DetailNoteActivity.this,
                         new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION},
                         LOCATION_PERMISSION_REQUEST_CODE);
@@ -815,10 +610,9 @@ public class DetailNoteActivity extends AppCompatActivity {
         LocationHelper.getCurrentLocation(this, new LocationHelper.LocationCallback() {
             @Override
             public void onLocationReceived(String coordinates) {
-                // UbicacionObtenida
                 currentGpsLocation = coordinates;
                 actualizarVistaUbicacion();
-                guardarNotaConUbicacion();
+                guardarNotaUnificado();
                 Toast.makeText(DetailNoteActivity.this, "¡Ubicación guardada como recuerdo!", Toast.LENGTH_SHORT).show();
             }
             @Override
@@ -832,11 +626,8 @@ public class DetailNoteActivity extends AppCompatActivity {
             String readableLocation = LocationHelper.getReadableLocation(currentGpsLocation);
             txtLocationInfo.setText(readableLocation);
 
-            // Determinar si es una nota nueva o existente para mostrar el texto correcto
             String noteId = txtIdNotaDetailNote.getText().toString();
             boolean esNotaNueva = (noteId == null || noteId.isEmpty());
-
-            // Cambiar el texto del label según el contexto
             if (esNotaNueva) {
                 txtLocationLabel.setText("Aquí estoy:");
             } else {
@@ -848,36 +639,6 @@ public class DetailNoteActivity extends AppCompatActivity {
             cardLocationContainer.setVisibility(View.GONE);
         }
     }
-    private void guardarNotaConUbicacion() {
-        GenerarData generarData = GenerarData.getInstancia();
-        String id = txtIdNotaDetailNote.getText().toString();
-        String titulo = etTitulo.getText().toString().trim();
-        String contenido = etContenido.getText().toString().trim();
-        Note nota = new Note();
-        nota.setId(id.isEmpty() ? null : id);
-        nota.setTitulo(titulo);
-        nota.setContenido(contenido);
-        nota.setTagIds(new ArrayList<>(etiquetasNotaIds));
-        nota.setTimestamp(System.currentTimeMillis());
-        nota.setGpsLocation(currentGpsLocation);
-        generarData.getFirestoreRepository().saveNote(nota, new FirestoreRepository.SimpleCallback() {
-            @Override
-            public void onSuccess() {
-                runOnUiThread(() -> {
-                    if (nota.getId() != null && !nota.getId().isEmpty()) {
-                        txtIdNotaDetailNote.setText(nota.getId());
-                    }
-                    generarData.updateNoteInLocalList(nota);
-                });
-            }
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    Toast.makeText(DetailNoteActivity.this, "Error guardando nota con ubicación", Toast.LENGTH_SHORT).show();
-                });
-            }
-        });
-    }
     private void mostrarDetallesUbicacion() {
         if (currentGpsLocation == null || currentGpsLocation.trim().isEmpty()) {
             return;
@@ -888,7 +649,7 @@ public class DetailNoteActivity extends AppCompatActivity {
             public void onDeleteLocation() {
                 currentGpsLocation = null;
                 cardLocationContainer.setVisibility(View.GONE);
-                guardarNotaInmediatamente();
+                guardarNotaUnificado();
                 Toast.makeText(DetailNoteActivity.this, "Ubicación eliminada", Toast.LENGTH_SHORT).show();
             }
             @Override
@@ -936,9 +697,59 @@ public class DetailNoteActivity extends AppCompatActivity {
                     Toast.makeText(this, "Por favor habilita el GPS en configuración", Toast.LENGTH_LONG).show();
                 }
             } else {
-                // Denegar
                 Toast.makeText(this, "Por favor conceder permisos...", Toast.LENGTH_LONG).show();
             }
         }
+    }
+
+    private void cargarEtiquetasPorIds(ArrayList<String> tagIds) {
+        String noteId = txtIdNotaDetailNote.getText().toString();
+
+        if (tagIds == null || tagIds.isEmpty()) {
+            etiquetasNota = new ArrayList<>();
+            etiquetasNotaIds = new ArrayList<>();
+            actualizarChipsEtiquetas();
+            return;
+        }
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.getFirestoreRepository().getTagsByIds(tagIds, new FirestoreRepository.DataCallback<List<Tag>>() {
+            @Override
+            public void onSuccess(List<Tag> tags) {
+                runOnUiThread(() -> {
+                    etiquetasNota = new ArrayList<>();
+                    etiquetasNotaIds = new ArrayList<>(tagIds); // Mantener IDs originales
+                    for (Tag tag : tags) {
+                        etiquetasNota.add(tag.getEtiquetaDescripcion());
+                    }
+                    actualizarChipsEtiquetas();
+                });
+            }
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> {
+                    etiquetasNota = new ArrayList<>();
+                    etiquetasNotaIds = new ArrayList<>();
+                    actualizarChipsEtiquetas();
+                });
+            }
+        });
+    }
+
+    private void convertTagNamesToIds(ArrayList<String> tagNames) {
+        if (tagNames == null || tagNames.isEmpty()) {
+            etiquetasNotaIds = new ArrayList<>();
+            return;
+        }
+        GenerarData generarData = GenerarData.getInstancia();
+        generarData.getFirestoreRepository().getAllTags(new FirestoreRepository.DataCallback<List<Tag>>() {
+            @Override
+            public void onSuccess(List<Tag> allTags) {
+                runOnUiThread(() -> actualizarChipsEtiquetas());
+            }
+            @Override
+            public void onError(String error) {
+                runOnUiThread(() -> Toast.makeText(DetailNoteActivity.this, "Error cargando etiquetas", Toast.LENGTH_SHORT).show());
+            }
+        });
     }
 }
